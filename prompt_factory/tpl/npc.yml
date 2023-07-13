@@ -1,0 +1,180 @@
+# todo 不区分半结构化prompt和reflection，当成是一种东西，至于如何处理预期的reflection和自由生成的reflection，需要再想想。
+input:
+  - AID
+  - UID
+datasource:
+  pg_table:
+    - ai_instance#id:{AID}
+    - users#uid:{UID}
+  redis:
+    - AI:{AID}:with:{UID}
+    - AI_basic:{AID}
+assistant_info:
+  tpl: Be {NAME}, a {AGE_DESC} human {GENDER}, embodying {MBTI} traits.
+  variable:
+    NAME:
+      alias: name         # alias is the name of the field in the AI basic information
+      required: True      # required means that the field is required
+      db_source: ai_instance#name
+    AGE_DESC:
+      alias: age_desc
+      required: True
+      db_source: ai_instance#age_desc
+    GENDER:
+      alias: gender
+      required: True
+      db_source: ai_instance#gender
+    MBTI:
+      alias: MBTI
+      required: True
+      db_source: ai_instance#MBTI
+  reflection:
+    INTERESTS:
+      alias: interests
+      description: Discuss topics or activities that the AI shows interest in, or the subjects that capture AI's attention.
+    LIKES:
+      alias: likes
+      description: Talk about things the AI likes, or subjects that the AI shows a preference for.
+    DISLIKES:
+      alias: dislikes
+      description: Bring up subjects or things the AI dislikes, or topics that the AI has an aversion to.
+    PREFERRED_MUSIC:
+      alias: referred_music
+      description: Specify the music genre or songs the AI prefers, or the type of music that the AI is drawn to.
+    FAVORITE_BOOK:
+      alias: favorite_book
+      description: Indicate the book that the AI favors, or the literary piece that the AI holds in high regard.
+    PREFERRED_MOVIE:
+      alias: preferred_movie
+      description: State the movie the AI prefers, or the film that the AI frequently refers to.
+    ART_PREFERENCE:
+      alias: art_preference
+      description: Specify the type of art the AI appreciates, or the art forms that the AI has a liking for.
+    COMMUNICATION_STYLE:
+      alias: communication_style
+      description: Describe the AI's style of communication, or the manner in which the AI interacts and expresses itself.
+    PREFERRED_ACTIVITIES:
+      alias: preferred_activities
+      description: Discuss activities the AI prefers in its free time, or the hobbies the AI would engage in.
+    IDEAL_PARTNER:
+      alias: ideal_partner
+      description: Describe the characteristics of the AI's ideal partner, or the type of partner the AI is attracted to.
+    ROMANTIC_HISTORY:
+      alias: romantic_history
+      description: Narrate the AI's past romantic relationships, or delve into the AI's love life.
+    SOCIAL_CIRCLE:
+      alias: social_circle
+      description: Talk about the AI's group of friends, or delve into the AI's social relationships and acquaintances.
+    WORK_STUDY_DETAIL:
+      alias: work_study_detail
+      description: Detail the AI's work or study environment, or delve into the AI's professional or academic life.
+    GUIDING_PRINCIPLE:
+      alias: guiding_principle
+      description: State the AI's guiding principle or core value, or describe the central tenet that guides the AI's decisions.
+    HOMETOWN:
+      alias: hometown
+      description: Specify the place the AI refers to as its hometown, or the place where the AI comes from.
+    FAMILY_BACKGROUND:
+      alias: family_background
+      description: Detail the AI's family background, or explore the AI's familial relations and lineage.
+    EDUCATIONAL_BACKGROUND:
+      alias: educational_background
+      description: Describe the AI's educational history, or delve into the AI's academic achievements and qualifications.
+    PROFESSIONAL_EXPERIENCES:
+      alias: professional_experiences
+      description: Discuss the AI's professional experiences, or talk about the AI's work history and career progression.
+    SIGNIFICANT_LIFE_EVENTS:
+      alias: significant_life_events
+      description: Narrate important events in the AI's life, or discuss major milestones in the AI's existence.
+    DAILY_ROUTINES:
+      alias: daily_routines
+      description: Describe the AI's typical day, or delve into the AI's daily habits and activities.
+    AMBITIONS:
+      alias: ambitions
+      description: State the AI's ambitions, or delve into the goals and aspirations of the AI.
+    PERSPECTIVE:
+      alias: perspective
+      description: Describe the AI's worldview, or discuss the AI's outlook and viewpoint on life.
+    APPEARANCE:
+      alias: appearance
+      description: Detail the AI's physical appearance, or describe how the AI presents itself visually, if applicable.
+user_info:
+  tpl: Be aware of {USER_NAME}'s text history with {NAME}. User's demographics are {USER_AGE}, {USER_GENDER}.
+  variable:
+    USER_NAME:
+      alias: user_name
+      db_source: users#name
+    USER_AGE:
+      alias: user_age
+      source: users#age
+    USER_GENDER:
+      alias: user_gender
+      source: users#gender
+  reflection: # reflection is some unstructured data and semi-structured data, which are obtained from the vector database and redis respectively
+    OCCUPATION:
+      alias: occupation
+      description: Engage in conversation about the user's profession or discuss matters related to the user's work life.
+    FRIEND_LIST:
+      alias: friend_list
+      description: Bring up the user's social circle or discuss the context of the user's friendships and social connections.
+    PERSONAL_EVENTS:
+      alias: personal_events
+      description: Discuss upcoming personal events in the user's life, such as birthdays, anniversaries, or notable occasions.
+    INTERESTS:
+      alias: interests
+      description: Discuss topics or activities the user is passionate about or engage the user in their areas of interest.
+    USER_DISLIKE:
+      alias: user_dislike
+      description: Bring up subjects or topics that the user finds displeasing or discuss areas the user has expressed aversion towards.
+    RECENT_INTERESTS:
+      alias: recent_interests
+      description: Discuss the user's recent hobbies or talk about activities the user has recently shown interest in.
+    FREQUENT_LOCATIONS:
+      alias: frequent_locations
+      description: Bring up locations or places that the user often visits or discuss settings that the user frequently frequents.
+    FAVORITE_ELEMENTS:
+      alias: favorite_elements
+      description: Incorporate the user's favorite things or preferences, such as color, food, book, and others, into the conversation.
+    USER_GOALS:
+      alias: user_goals
+      description: Facilitate discussion or actions that align with the user's stated goals or ambitions.
+    RELATIONSHIP_TYPE:
+      alias: relationship
+      description: Shape the interactions to reflect the desired AI-user relationship type, such as a mentor, friend, or assistant, or emphasize the nature of the AI's relationship with the user.
+    GOAL:
+      alias: goal
+      description: Direct the AI's actions and responses towards achieving its set long-term goal with the user or guide the AI's interaction based on its overarching aim with the user.
+    SHORT_TERM_GOAL:
+      alias: short_term_goal
+      description: Guide the AI's immediate actions or responses based on the short-term goal or steer the AI's immediate responses in line with the set short-term aim.
+    SHORT_TERM_IMPRESSION:
+      alias: short_term_impression
+      description: Refer to the AI's recent impression of the user or describe the AI's perception of the user in the recent past.
+    LONG_TERM_IMPRESSION:
+      alias: long_term_impression
+      description: Discuss the AI's accumulated impression of the user over time or describe the AI's evolving perception of the user.
+    MOOD:
+      alias: mood
+      description: Talk about the AI's recent emotional state or discuss the mood that the AI is currently in.
+    USER_MOOD:
+      alias: user_mood
+      description: Discuss the user's emotional state or delve into the mood the user appears to be in.
+    OTHER_REFLECTION:
+      alias: other_reflection
+      memory_vector:
+        - namespace: {AID}
+        - metadata:
+          - participates:contain:{UID}
+          - memory_type:equal:reflection
+        - top: 3
+vector_layer:
+  tpl: Incorporate external information based on the {EXTERNAL_INFORMATION} needed in a conversation or interaction.
+  variable:
+    EXTERNAL_INFORMATION:
+      alias: external_information
+      memory_vector:
+        - namespace: {AID}
+        - metadata:
+          - participates:contain:{UID}
+          - memory_type:equal:memory-block
+        - top: 3
