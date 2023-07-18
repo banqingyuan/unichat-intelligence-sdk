@@ -1,28 +1,28 @@
 # todo 不区分半结构化prompt和reflection，当成是一种东西，至于如何处理预期的reflection和自由生成的reflection，需要再想想。
 input:
-  - aid
-  - uid
+  - AID
+  - UID
 datasource:
   pg_table:
-    - ai_instance#id:{aid}
-    - users#uid:{uid}
+    - ai_instance#id:{AID}
+    - users#uid:{UID}
   redis:
-    - ai:{aid}:with:{uid}
-    - ai_basic:{aid}
-assistant_info:
-  tpl: be {name}, a {age} years old human {gender}, embodying {mbti} traits.
+    - ai:{AID}:with:{UID}
+assistant_info: # supposed to obtain direct from outside structure
+  tpl: Be {nickname}, {age} years old human {gender}, embodying {mbti} traits.
   variable:
-    name:
-      db_source: ai_instance#nick_name
+    nickname:
+      key: value # 占位符，无用
     age:
-      db_source: ai_instance#age
+      key: value # 占位符，无用
     gender:
-      db_source: ai_instance#gender
-    mbti:
-      db_source: ai_instance#mbti
+      key: value # 占位符，无用
+    MBTI:
+      key: value # 占位符，无用
   reflection:
     interests:
       description: discuss topics or activities that the ai shows interest in, or the subjects that capture ai's attention.
+      persona: True
     likes:
       description: talk about things the ai likes, or subjects that the ai shows a preference for.
     dislikes:
@@ -33,7 +33,7 @@ assistant_info:
       description: indicate the book that the ai favors, or the literary piece that the ai holds in high regard.
     preferred_movie:
       description: state the movie the ai prefers, or the film that the ai frequently refers to.
-    art_preference:
+    art_preferences:
       description: specify the type of art the ai appreciates, or the art forms that the ai has a liking for.
     communication_style:
       description: describe the ai's style of communication, or the manner in which the ai interacts and expresses itself.
@@ -68,7 +68,7 @@ assistant_info:
     appearance:
       description: detail the ai's physical appearance, or describe how the ai presents itself visually, if applicable.
 user_info:
-  tpl: be aware of {user_name}'s text history with {name}. user's demographics are {user_age}, {user_gender}.
+  tpl: Be aware of {user_name}'s text history with {name}. user's demographics are {user_age}, {user_gender}.
   variable:
     user_name:
       db_source: users#name
@@ -91,3 +91,40 @@ user_info:
       description: discuss the user's recent hobbies or talk about activities the user has recently shown interest in.
     frequent_locations:
       description: bring up locations or places that the user often visits or discuss settings that the user frequently frequents.
+    favorite_elements:
+      description: incorporate the user's favorite things or preferences, such as color, food, book, and others, into the conversation.
+    user_goals:
+      description: facilitate discussion or actions that align with the user's stated goals or ambitions.
+    relationship_type:
+      description: shape the interactions to reflect the desired ai-user relationship type, such as a mentor, friend, or assistant, or emphasize the nature of the ai's relationship with the user.
+    goal:
+      description: direct the ai's actions and responses towards achieving its set long-term goal with the user or guide the ai's interaction based on its overarching aim with the user.
+    short_term_goal:
+      description: guide the ai's immediate actions or responses based on the short-term goal or steer the ai's immediate responses in line with the set short-term aim.
+    short_term_impression:
+      description: refer to the ai's recent impression of the user or describe the ai's perception of the user in the recent past.
+    long_term_impression:
+      description: discuss the ai's accumulated impression of the user over time or describe the ai's evolving perception of the user.
+    mood:
+      description: talk about the ai's recent emotional state or discuss the mood that the ai is currently in.
+    user_mood:
+      description: discuss the user's emotional state or delve into the mood the user appears to be in.
+    other_reflection:
+      memory_vector:
+        namespace: {AID}
+        metadata:
+          - participates:contain:{UID}
+          - memory_type:equal:reflection
+        top: 2
+        blob: ai-reflection
+vector_layer:
+  tpl: Incorporate external information based on the {external_information} needed in a conversation or interaction.
+  variable:
+    external_information:
+      memory_vector:
+        namespace: {AID}
+        metadata:
+          - participates:contain:{UID}
+          - memory_type:equal:memory_block
+        top: 3
+        blob: memory-block
