@@ -3,9 +3,13 @@ import queue
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
+from hashlib import md5
 from typing import List, Dict
 
 import os
+
+from common_py.const.ai_attr import AI_type_emma, AI_type_passerby, AI_type_npc, AI_type_tina
+
 import tpl_loader
 from common_py.client.embedding import OpenAIEmbedding
 from common_py.client.pg import PgEngine
@@ -117,8 +121,6 @@ class PromptLoader:
             vec_res.append(data)
         return '\n'.join(vec_res)
 
-
-
     def _maintain_top3(self, top3_list: List, item: tuple):
         if len(top3_list) < 3:
             top3_list.append(item)
@@ -138,41 +140,41 @@ class PromptLoader:
                 if key in params:
                     variable_res[key] = params[key]
                     continue
-                else:
-                    if 'db_source' not in variable:
-                        raise Exception(f"variable {key} has no db_source and can not found in redis")
-                    if 'pg_table' not in self.datasource:
-                        raise Exception(f"variable {key} has no pg_table and can not found in redis")
-                    database_key = variable['db_source']
-                    table, column_pair = database_key.split('#')[0], database_key.split('#')[1]
-                    column_name, column_value = column_pair.split(':')[0], column_pair.split(':')[1]
-                    if table in self.db_result:
-                        table_res = self.db_result[table]
-                        if column_name not in table_res:
-                            raise Exception(f"column {column_name} not found in table {table}")
-                        variable_res[key] = table_res[column_name]
-                        continue
-                    with self._db_query_lock:
-                        if table not in self.db_result:
-                            with Session(self.pg_instance) as session:
-                                value = params.get(column_value, None)
-                                if value is None:
-                                    raise Exception(f"column {column_value} not found in params")
-                                result = session.execute(text(f"select * from {table} where {column_name} = {value}"))
-                                rows = result.fetchall()
-                                if len(rows) == 0:
-                                    raise Exception(f"column {column_name} not found in table {table}")
-                                logger.debug(
-                                    f"query table {table} with column {column_name} = {value}, res: {rows}, type: {type(rows)}")
-                                self.db_result[table] = rows[0]
-                    if table in self.db_result:
-                        table_res = self.db_result[table]
-                        if column_name not in table_res:
-                            raise Exception(f"column {column_name} not found in table {table}")
-                        variable_res[key] = table_res[column_name]
-                        continue
-                    else:
-                        raise Exception(f"column {column_name} not found either in table {table} or in redis")
+                # else:
+                    # if 'db_source' not in variable:
+                    #     raise Exception(f"variable {key} has no db_source and can not found in redis")
+                    # if 'pg_table' not in self.datasource:
+                    #     raise Exception(f"variable {key} has no pg_table and can not found in redis")
+                    # database_key = variable['db_source']
+                    # table, column_pair = database_key.split('#')[0], database_key.split('#')[1]
+                    # column_name, column_value = column_pair.split(':')[0], column_pair.split(':')[1]
+                    # if table in self.db_result:
+                    #     table_res = self.db_result[table]
+                    #     if column_name not in table_res:
+                    #         raise Exception(f"column {column_name} not found in table {table}")
+                    #     variable_res[key] = table_res[column_name]
+                    #     continue
+                    # with self._db_query_lock:
+                    #     if table not in self.db_result:
+                    #         with Session(self.pg_instance) as session:
+                    #             value = params.get(column_value, None)
+                    #             if value is None:
+                    #                 raise Exception(f"column {column_value} not found in params")
+                    #             result = session.execute(text(f"select * from {table} where {column_name} = {value}"))
+                    #             rows = result.fetchall()
+                    #             if len(rows) == 0:
+                    #                 raise Exception(f"column {column_name} not found in table {table}")
+                    #             logger.debug(
+                    #                 f"query table {table} with column {column_name} = {value}, res: {rows}, type: {type(rows)}")
+                    #             self.db_result[table] = rows[0]
+                    # if table in self.db_result:
+                    #     table_res = self.db_result[table]
+                    #     if column_name not in table_res:
+                    #         raise Exception(f"column {column_name} not found in table {table}")
+                    #     variable_res[key] = table_res[column_name]
+                    #     continue
+                    # else:
+                    #     raise Exception(f"column {column_name} not found either in table {table} or in redis")
         return variable_res
 
     def _process_datasource(self, **params) -> dict:
@@ -184,24 +186,34 @@ class PromptLoader:
             data_map[param] = params[param]
         self.datasource = self.tpl.get("datasource")
         if "redis" in self.datasource:
-            if type(self.datasource["redis"]) == str:
-                self.datasource["redis"] = [self.datasource["redis"]]
-            for redis_key in self.datasource["redis"]:
+            for redis_key, redis_detail in self.datasource["redis"].items():
                 redis_key.format(**data_map)
                 hash_key = '_'.join([redis_key, "hash"])
                 hash_res = self.redis_client.get(hash_key)
                 if hash_res is None:
-                    logger.warning(f"failed to load redis_key {redis_key} cause hash key not found")
-                    continue
-                if hash_key in self.redis_hash_dict and self.redis_hash_dict[hash_key] == hash_res:
+                    logger.warning(f"failed to load redis_key {redis_key} cause redis key not found")
+                elif hash_key in self.redis_hash_dict and self.redis_hash_dict[hash_key] == hash_res:
                     data_map.update(self.redis_data[redis_key])
                     continue
-                redis_res = self.redis_client.hgetall(redis_key)
+
+                if redis_detail["method"] == "hmget":
+                    if redis_detail["keymap"] is None:
+                        raise Exception(f"keymap not found in redis detail {redis_detail}")
+                    keymap = redis_detail["keymap"]
+                    if type(keymap) is not dict:
+                        raise Exception(f"keymap should be a dict")
+                    redis_res = self.redis_client.hmget(redis_key, keymap.keys())
+                    for key, value in zip(keymap.keys(), redis_res):
+                        redis_res[keymap[key]] = value
+                else:
+                    raise Exception(f"redis method {redis_detail['method']} not supported")
                 if redis_res is None:
                     logger.warning(f"failed to load redis_key {redis_key} cause redis key not found")
                     continue
                 self.redis_data[redis_key] = redis_res
-                self.redis_hash_dict[hash_key] = hash_res
+                if hash_res is not None:
+                    self.redis_hash_dict[hash_key] = hash_res
+
                 data_map.update(redis_res)
         return data_map
 
@@ -223,11 +235,11 @@ class PromptLoader:
 
     def __init__(self, tpl_type: str):
         self.tpl_type = tpl_type
-        if tpl_type == "emma":
+        if tpl_type == AI_type_emma or tpl_type == AI_type_passerby:
             self.tpl = tpl_loader.emma_config
-        elif tpl_type == "npc":
+        elif tpl_type == AI_type_npc:
             self.tpl = tpl_loader.npc_config
-        elif tpl_type == "tina":
+        elif tpl_type == AI_type_tina:
             self.tpl = tpl_loader.tina_config
         self.redis_data: Dict[str, dict] = {}
         self.redis_hash_dict: Dict[str, str] = {}

@@ -3,13 +3,24 @@ input:
   - AID
   - UID
 datasource:
-  pg_table:
-    - ai_instance#id:{AID}
-    - users#uid:{UID}
   redis:
-    - ai:{AID}:with:{UID}
+#    reflection_memory:ai:{AID}:with:{UID}:
+    unichat.server:user.info:{UID}:
+      method: hmget
+      keymap:
+        Name: user_name
+        Age: user_age
+        Gender: user_gender
+    unichat.server:ai.instance.info:{AID}:
+      method: hmget
+      keymap:
+        nickname: nickname
+        age: age
+        gender: gender
+        MBTI: MBTI
+        persona: persona
 assistant_info: # supposed to obtain direct from outside structure
-  tpl: Be {nickname}, {age} years old human {gender}, embodying {mbti} traits.
+  tpl: Be {nickname}, {age} years old human {gender}, embodying {MBTI} traits.
   variable:
     nickname:
       key: value # 占位符，无用
@@ -71,11 +82,11 @@ user_info:
   tpl: Be aware of {user_name}'s text history with {name}. user's demographics are {user_age}, {user_gender}.
   variable:
     user_name:
-      db_source: users#name
+      key: value # 占位符，无用
     user_age:
-      source: users#age
+      key: value # 占位符，无用
     user_gender:
-      source: users#gender
+      key: value # 占位符，无用
   reflection: # reflection is some unstructured data and semi-structured data, which are obtained from the vector database and redis respectively
     occupation:
       description: engage in conversation about the user's profession or discuss matters related to the user's work life.

@@ -8,9 +8,13 @@ from copy import copy
 import yaml
 from common_py.client.azure_mongo import MongoDBClient
 from common_py.client.embedding import OpenAIEmbedding
+from common_py.client.pg import PgEngine
 from common_py.client.redis import RedisClient, RedisAIInstanceInfo
+from common_py.const.ai_attr import AI_type_passerby, AI_type_emma, AI_type_npc, AI_type_tina
+from common_py.dto.ai_instance import AIInstance
 from common_py.utils.util import get_random_str
-
+from sqlalchemy.orm import Session
+from sqlalchemy import insert
 import tpl_loader
 
 with open('tpl/firstname.yml', 'r') as f:
@@ -21,6 +25,19 @@ with open('tpl/lastname.yml', 'r') as f:
 
 class NPCFactory:
 
+    """
+    ai_profile schema:
+    {
+        "AID": "AI instance id",
+        "UID": "user id",
+        "nickname": "nickname",
+        "type": "AI type",
+        "age": "age",
+        "persona": "{}",
+        "gender": "",
+        "MBTI": "",
+    }
+    """
     def create_new_tmp_AI(self, typ: str, UID: str, **kwargs) -> str:
         exclude_personality_ids = kwargs.get('exclude_personality_ids', [])
         res = self.mongo_client.aggregate_from_collection("AI_personality", [
@@ -31,19 +48,18 @@ class NPCFactory:
             raise ValueError(f"No such AI personality: {typ}")
         personality = res[0]
         ai_profile = {}
-        if typ == 'emma':
+        if typ == AI_type_emma:
             tpl_persona_dict = copy(tpl_loader.emma_personality_dict)
             ai_basic_info_list = copy(tpl_loader.emma_basic_info)
-        elif typ == 'npc':
+        elif typ == AI_type_npc:
             tpl_persona_dict = copy(tpl_loader.npc_personality_dict)
             ai_basic_info_list = copy(tpl_loader.npc_basic_info)
-        elif typ == 'tina':
+        elif typ == AI_type_tina:
             tpl_persona_dict = copy(tpl_loader.tina_personality_dict)
             ai_basic_info_list = copy(tpl_loader.tina_basic_info)
         else:
             raise ValueError(f"Unknown AI type: {typ}")
         ai_profile["persona"] = {}
-
         no_use_list = []
         with ThreadPoolExecutor(max_workers=20) as executor:
             for k, v in personality.items():
@@ -54,13 +70,32 @@ class NPCFactory:
         if len(tpl_persona_dict) > 0:
             logging.warning("missing personality: %s", tpl_persona_dict.keys())
         ai_profile["nickname"] = _generate_random_name(gender=ai_profile["gender"])
-        ai_profile["type"] = typ if typ != 'emma' else 'passerby'
+        ai_profile["type"] = typ if typ != AI_type_emma else AI_type_passerby
         ai_profile["UID"] = UID
         AID = _generate_AID(UID)
         ai_profile["AID"] = AID
+        ai_profile["persona"] = json.dumps(ai_profile["persona"])
         self.redis_client.hset(f"{RedisAIInstanceInfo}{AID}", ai_profile)
         self.redis_client.expire(f"{RedisAIInstanceInfo}{AID}", 60 * 60 * 24 * 30)
         return AID
+
+    def persist_AI(self, AID: str):
+        ai_profile = self.redis_client.hgetall(f"{RedisAIInstanceInfo}{AID}")
+        if ai_profile is None:
+            raise ValueError(f"No such AI: {AID}")
+        ai_profile = json.loads(ai_profile)
+        with Session(self.pg_instance) as session:
+            sql = insert(AIInstance).values(AIInstance(
+                id=ai_profile["AID"],
+                uid=ai_profile["UID"],
+                type=ai_profile["type"],
+                nickname=ai_profile["nickname"],
+                gender=ai_profile["gender"],
+                mbti=ai_profile["MBTI"],
+                age=ai_profile["age"],
+                persona=ai_profile["persona"],
+            ))
+            session.execute(sql)
 
     def _match_prompt_tpl(self, persona_dict, provide_key, provide_value, ai_profile, ai_basic_info_list, no_use_list):
         if provide_key in persona_dict:
@@ -99,6 +134,7 @@ class NPCFactory:
         self.redis_client: RedisClient = redis_client
         self.mongo_client: MongoDBClient = mongodb_client
         self.embedding_client: OpenAIEmbedding = OpenAIEmbedding()
+        self.pg_instance = PgEngine().get_instance()
 
 
 def _generate_random_name(gender: str) -> str:
