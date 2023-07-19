@@ -247,4 +247,3 @@ class PromptLoader:
         self.db_result = {}
         self.redis_client = RedisClient()
         self.pinecone_client = PineconeClient()
-        self.pg_instance = PgEngine().get_instance()
