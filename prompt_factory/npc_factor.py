@@ -130,9 +130,9 @@ class NPCFactory:
         self.redis_client.setex(f"embedding_of_{md5}", embedding_cache, 60*60*24*30)
         return embedding
 
-    def __init__(self, redis_client, mongodb_client):
-        self.redis_client: RedisClient = redis_client
-        self.mongo_client: MongoDBClient = mongodb_client
+    def __init__(self):
+        self.redis_client: RedisClient = RedisClient()
+        self.mongo_client: MongoDBClient = MongoDBClient()
         self.embedding_client: OpenAIEmbedding = OpenAIEmbedding()
         self.pg_instance = PgEngine().get_instance()
 
