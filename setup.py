@@ -2,9 +2,9 @@ from setuptools import setup, find_packages
 
 setup(
     name='unichat-prompt-sdk',
-    version='0.0.4',
+    version='0.0.5',
     packages=find_packages(),
-    package_data={"unichat-prompt-sdk": ["*.pyi", "*.yml"]},
+    package_data={"unichat-prompt-sdk": ["prompt_factory/tpl/*.yml"]},
     include_package_data=True,
     install_requires=[
         'pydantic==1.10.9',
