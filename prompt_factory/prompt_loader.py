@@ -27,6 +27,9 @@ class PromptLoader:
     def parse_prompt(self, input: str, **params) -> str:
         prompt_queue: queue.Queue = queue.Queue()
         variable_data = self._process_datasource(**params)
+        if "persona" in variable_data:
+            variable_data.update(variable_data["persona"])
+            variable_data.pop("persona")
         with ThreadPoolExecutor(max_workers=5) as executor:
             idx = 0
             for tpl_name, tpl_block in self.tpl.items():
@@ -53,7 +56,7 @@ class PromptLoader:
                     # variables_res = self._get_variables_results(tpl, **params)
                     fixed_res = fixed_tpl.format(**params)
             except KeyError as e:
-                logger.warning(f"KeyError: {e}")
+                logger.warning(f"variable not found when try to format tpl :{fixed_tpl}. key: {e}")
 
             reflection = tpl.get("reflection", None)
             if reflection is None:
