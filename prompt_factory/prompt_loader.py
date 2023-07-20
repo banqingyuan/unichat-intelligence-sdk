@@ -10,18 +10,14 @@ import os
 
 from common_py.const.ai_attr import AI_type_emma, AI_type_passerby, AI_type_npc, AI_type_tina
 
-import tpl_loader
 from common_py.client.embedding import OpenAIEmbedding
 from common_py.client.pg import PgEngine
 from common_py.client.pinecone_client import PineconeClient
 from common_py.client.redis import RedisClient
 from common_py.utils.logger import logger
 from common_py.utils.similarity import similarity
-from pinecone import QueryResponse
-from sqlalchemy import text
-from sqlalchemy.orm import Session
 
-
+from prompt_factory.tpl_loader import emma_config, tina_config, npc_config
 
 specific_key = ['input', 'datasource']
 
@@ -236,11 +232,11 @@ class PromptLoader:
     def __init__(self, tpl_type: str):
         self.tpl_type = tpl_type
         if tpl_type == AI_type_emma or tpl_type == AI_type_passerby:
-            self.tpl = tpl_loader.emma_config
+            self.tpl = emma_config
         elif tpl_type == AI_type_npc:
-            self.tpl = tpl_loader.npc_config
+            self.tpl = npc_config
         elif tpl_type == AI_type_tina:
-            self.tpl = tpl_loader.tina_config
+            self.tpl = tina_config
         self.redis_data: Dict[str, dict] = {}
         self.redis_hash_dict: Dict[str, str] = {}
         self._db_query_lock = threading.Lock()
