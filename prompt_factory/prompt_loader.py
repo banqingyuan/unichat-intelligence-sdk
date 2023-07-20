@@ -45,18 +45,24 @@ class PromptLoader:
         return result
 
     def _get_prompt_block(self, idx: int, tpl: dict, chat_input: str, q: queue.Queue, **params):
-        fixed_tpl = tpl.get("tpl", None)
-        fixed_res = ""
-        if fixed_tpl is not None:
-            variables_res = self._get_variables_results(tpl, **params)
-            fixed_res = fixed_tpl.format(**variables_res)
+        try:
+            fixed_tpl = tpl.get("tpl", None)
+            fixed_res = ""
+            try:
+                if fixed_tpl is not None:
+                    # variables_res = self._get_variables_results(tpl, **params)
+                    fixed_res = fixed_tpl.format(**params)
+            except KeyError as e:
+                logger.warning(f"KeyError: {e}")
 
-        reflection = tpl.get("reflection", None)
-        if reflection is None:
-            q.put((idx, fixed_res))
-            return
-        reflection_res = self._get_reflection_results(reflection, chat_input, **params)
-        q.put((idx, fixed_res + ' ' + reflection_res))
+            reflection = tpl.get("reflection", None)
+            if reflection is None:
+                q.put((idx, fixed_res))
+                return
+            reflection_res = self._get_reflection_results(reflection, chat_input, **params)
+            q.put((idx, fixed_res + ' ' + reflection_res))
+        except Exception as e:
+            logger.exception(e)
 
     def _get_reflection_results(self, reflection, chat_input, **params) -> str:
         # Calculating the similarity of two 1536-dimensional vectors takes on average 1ms
