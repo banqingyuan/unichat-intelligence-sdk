@@ -84,20 +84,21 @@ class NPCFactory:
 
     def persist_AI(self, AID: str):
         ai_profile = self.redis_client.hgetall(f"{RedisAIInstanceInfo}{AID}")
-        if ai_profile is None:
+        if not ai_profile:
             raise ValueError(f"No such AI: {AID}")
         ai_profile = json.loads(ai_profile)
+        decode_profile = {k.decode(): v.decode() for k, v in ai_profile.items()}
         with Session(self.pg_instance) as session:
-            sql = insert(AIInstance).values(AIInstance(
-                id=ai_profile["AID"],
-                uid=ai_profile["UID"],
-                type=ai_profile["type"],
-                nickname=ai_profile["nickname"],
-                gender=ai_profile["gender"],
-                mbti=ai_profile["MBTI"],
-                age=ai_profile["age"],
-                persona=ai_profile["persona"],
-            ))
+            sql = insert(AIInstance).values(
+                id=decode_profile["AID"],
+                uid=decode_profile["UID"],
+                type=decode_profile["type"],
+                nickname=decode_profile["nickname"],
+                gender=decode_profile["gender"],
+                mbti=decode_profile["MBTI"],
+                age=decode_profile["age"],
+                persona=decode_profile["persona"],
+            )
             session.execute(sql)
 
     def _match_prompt_tpl(self, persona_dict, provide_key, provide_value, ai_profile, ai_basic_info_list, no_use_list):
