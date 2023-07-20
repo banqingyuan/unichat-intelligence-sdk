@@ -183,8 +183,8 @@ class PromptLoader:
         logger.debug(f"process datasource with params {params.keys()}")
         self.datasource = self.tpl.get("datasource")
         if "redis" in self.datasource:
-            for redis_key, redis_detail in self.datasource["redis"].items():
-                redis_key.format(data_map)
+            for redis_key_tpl, redis_detail in self.datasource["redis"].items():
+                redis_key = redis_key_tpl.format(**data_map)
                 hash_key = '_'.join([redis_key, "hash"])
                 hash_res = self.redis_client.get(hash_key)
                 if hash_res is None:
