@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='unichat-prompt-sdk',
-    version='0.0.11',
+    version='0.0.12',
     packages=find_packages(),
     package_data={"unichat-prompt-sdk": ["prompt_factory/tpl/*.yml"]},
     include_package_data=True,  # 这是关键：确保包含MANIFEST.in中指定的所有文件

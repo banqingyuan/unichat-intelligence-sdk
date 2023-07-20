@@ -192,6 +192,7 @@ class PromptLoader:
                     data_map.update(self.redis_data[redis_key])
                     continue
 
+                redis_data = {}
                 if redis_detail["method"] == "hmget":
                     if redis_detail["keymap"] is None:
                         raise Exception(f"keymap not found in redis detail {redis_detail}")
@@ -200,17 +201,17 @@ class PromptLoader:
                         raise Exception(f"keymap should be a dict")
                     redis_res = self.redis_client.hmget(redis_key, keymap.keys())
                     for key, value in zip(keymap.keys(), redis_res):
-                        redis_res[keymap[key]] = value
+                        redis_data[keymap[key]] = value
                 else:
                     raise Exception(f"redis method {redis_detail['method']} not supported")
-                if redis_res is None:
+                if redis_data is None:
                     logger.warning(f"failed to load redis_key {redis_key} cause redis key not found")
                     continue
-                self.redis_data[redis_key] = redis_res
+                self.redis_data[redis_key] = redis_data
                 if hash_res is not None:
                     self.redis_hash_dict[hash_key] = hash_res
 
-                data_map.update(redis_res)
+                data_map.update(redis_data)
         return data_map
 
     def _parse_single_metadata(self, meta_item: str, **params):
