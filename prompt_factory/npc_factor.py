@@ -151,7 +151,7 @@ def _generate_AID(UID: str) -> str:
     # 对一个字段生成md5并截断保存后10位
     origin_str = f"{str(time.time())}_{get_random_str(6)}"
     md5 = hashlib.md5(origin_str.encode('utf-8')).hexdigest()
-    return f"{UID}_{md5[-10:]}"
+    return f"{UID}-{md5[-10:]}"
 
 
 # if __name__ == '__main__':
