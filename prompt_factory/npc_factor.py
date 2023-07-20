@@ -5,6 +5,8 @@ import random
 import time
 from concurrent.futures import ThreadPoolExecutor
 from copy import copy
+from typing import List
+
 import yaml
 from common_py.client.azure_mongo import MongoDBClient
 from common_py.client.embedding import OpenAIEmbedding
@@ -40,10 +42,9 @@ class NPCFactory:
         "MBTI": "",
     }
     """
-    def create_new_tmp_AI(self, typ: str, UID: str, **kwargs) -> str:
-        exclude_personality_ids = kwargs.get('exclude_personality_ids', [])
+    def create_new_tmp_AI(self, typ: str, UID: str, gender: str, exclude_personality_ids: List[str]) -> str:
         res = self.mongo_client.aggregate_from_collection("AI_personality", [
-            {"$match": {"type": typ, "id": {"$nin": exclude_personality_ids}}},
+            {"$match": {"type": typ, "id": {"$nin": exclude_personality_ids}, "gender": gender}},
             {"$sample": {"size": 1}}
         ])
         if len(res) == 0:
