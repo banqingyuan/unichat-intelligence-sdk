@@ -14,6 +14,7 @@ setup(
         'setuptools==68.0.0',
         'pinecone-client==2.2.1',
         'numpy==1.24.4',
-        'PyYAML==6.0'
+        'PyYAML==6.0',
+        'SQLAlchemy==2.0.17'
     ]
 )

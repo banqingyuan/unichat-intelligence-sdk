@@ -15,7 +15,9 @@ from common_py.dto.ai_instance import AIInstance
 from common_py.utils.util import get_random_str
 from sqlalchemy.orm import Session
 from sqlalchemy import insert
-import tpl_loader
+
+from prompt_factory.tpl_loader import emma_basic_info, emma_personality_dict, npc_personality_dict, npc_basic_info, \
+    tina_basic_info, tina_personality_dict
 
 with open('tpl/firstname.yml', 'r') as f:
     firstname = yaml.safe_load(f)
@@ -49,14 +51,14 @@ class NPCFactory:
         personality = res[0]
         ai_profile = {}
         if typ == AI_type_emma:
-            tpl_persona_dict = copy(tpl_loader.emma_personality_dict)
-            ai_basic_info_list = copy(tpl_loader.emma_basic_info)
+            tpl_persona_dict = copy(emma_personality_dict)
+            ai_basic_info_list = copy(emma_basic_info)
         elif typ == AI_type_npc:
-            tpl_persona_dict = copy(tpl_loader.npc_personality_dict)
-            ai_basic_info_list = copy(tpl_loader.npc_basic_info)
+            tpl_persona_dict = copy(npc_personality_dict)
+            ai_basic_info_list = copy(npc_basic_info)
         elif typ == AI_type_tina:
-            tpl_persona_dict = copy(tpl_loader.tina_personality_dict)
-            ai_basic_info_list = copy(tpl_loader.tina_basic_info)
+            tpl_persona_dict = copy(tina_personality_dict)
+            ai_basic_info_list = copy(tina_basic_info)
         else:
             raise ValueError(f"Unknown AI type: {typ}")
         ai_profile["persona"] = {}
