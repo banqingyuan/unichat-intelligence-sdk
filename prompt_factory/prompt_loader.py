@@ -92,7 +92,7 @@ class PromptLoader:
             accepted_reflection[item[1]] = item[2]
         for item in top_3_of_description:
             accepted_reflection[item[1]] = item[2]
-        reflection_str = '\n'.join([f'${value}' for value in accepted_reflection.values()])
+        reflection_str = '\n'.join([f'{value}' for value in accepted_reflection.values()])
         return reflection_str
 
     def _get_vector_database(self, vdb_info, chat_embedding: List[float], **params) -> str:
@@ -130,10 +130,10 @@ class PromptLoader:
         if len(top3_list) < 3:
             top3_list.append(item)
         else:
-            for i in range(len(top3_list)):
-                if item[0] > top3_list[i][0]:
-                    top3_list[i] = item
-            sorted(top3_list, key=lambda x: x[0])
+            min_index = min(enumerate(top3_list), key=lambda x: x[1][0])[0]
+            if item[0] > top3_list[min_index][0]:
+                top3_list[min_index] = item
+        top3_list.sort(key=lambda x: x[0], reverse=True)
         return top3_list
 
     def _get_variables_results(self, tpl: dict, **params) -> dict:

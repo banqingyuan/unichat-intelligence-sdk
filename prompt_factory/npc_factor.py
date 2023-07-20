@@ -86,7 +86,6 @@ class NPCFactory:
         ai_profile = self.redis_client.hgetall(f"{RedisAIInstanceInfo}{AID}")
         if not ai_profile:
             raise ValueError(f"No such AI: {AID}")
-        ai_profile = json.loads(ai_profile)
         decode_profile = {k.decode(): v.decode() for k, v in ai_profile.items()}
         with Session(self.pg_instance) as session:
             sql = insert(AIInstance).values(
