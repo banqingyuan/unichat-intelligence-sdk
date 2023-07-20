@@ -63,7 +63,7 @@ class PromptLoader:
                 q.put((idx, fixed_res))
                 return
             reflection_res = self._get_reflection_results(reflection, chat_input, **params)
-            q.put((idx, fixed_res + ' ' + reflection_res))
+            q.put((idx, fixed_res + '\n' + reflection_res))
         except Exception as e:
             logger.exception(e)
 
@@ -92,7 +92,7 @@ class PromptLoader:
             accepted_reflection[item[1]] = item[2]
         for item in top_3_of_description:
             accepted_reflection[item[1]] = item[2]
-        reflection_str = ' '.join([f'${value}' for value in accepted_reflection.values()])
+        reflection_str = '\n'.join([f'${value}' for value in accepted_reflection.values()])
         return reflection_str
 
     def _get_vector_database(self, vdb_info, chat_embedding: List[float], **params) -> str:
