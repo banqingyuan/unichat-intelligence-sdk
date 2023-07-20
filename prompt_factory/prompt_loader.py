@@ -179,11 +179,12 @@ class PromptLoader:
         for param in required_params:
             if param not in params:
                 raise Exception(f"param {param} not found")
-            data_map[param] = params[param]
+        data_map.update(params)
+        logger.debug(f"process datasource with params {params.keys()}")
         self.datasource = self.tpl.get("datasource")
         if "redis" in self.datasource:
             for redis_key, redis_detail in self.datasource["redis"].items():
-                redis_key.format(**data_map)
+                redis_key.format(data_map)
                 hash_key = '_'.join([redis_key, "hash"])
                 hash_res = self.redis_client.get(hash_key)
                 if hash_res is None:
