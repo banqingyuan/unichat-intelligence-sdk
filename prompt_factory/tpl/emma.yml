@@ -1,7 +1,12 @@
 # todo 不区分半结构化prompt和reflection，当成是一种东西，至于如何处理预期的reflection和自由生成的reflection，需要再想想。
-input:
+input: # AI部分的知识应从上层加载
   - AID
   - UID
+  - nickname
+  - age
+  - gender
+  - MBTI
+  - persona
 datasource:
   redis:
 #    reflection_memory:ai:{AID}:with:{UID}:
@@ -11,14 +16,6 @@ datasource:
         Name: user_name
         Age: user_age
         Gender: user_gender
-    unichat.server:ai.instance.info:{AID}:
-      method: hmget
-      keymap:
-        nickname: nickname
-        age: age
-        gender: gender
-        MBTI: MBTI
-        persona: persona
 assistant_info: # supposed to obtain direct from outside structure
   tpl: Be {nickname}, {age} years old human {gender}, embodying {MBTI} traits.
   variable:

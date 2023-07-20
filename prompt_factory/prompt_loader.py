@@ -185,11 +185,12 @@ class PromptLoader:
         if "redis" in self.datasource:
             for redis_key_tpl, redis_detail in self.datasource["redis"].items():
                 redis_key = redis_key_tpl.format(**data_map)
-                hash_key = '_'.join([redis_key, "hash"])
-                hash_res = self.redis_client.get(hash_key)
-                if hash_res is None:
-                    logger.warning(f"failed to load redis_key {redis_key} cause redis key not found")
-                elif hash_key in self.redis_hash_dict and self.redis_hash_dict[hash_key] == hash_res:
+                # hash_key = '_'.join([redis_key, "hash"])
+                # hash_res = self.redis_client.get(hash_key)
+                # if hash_res is None:
+                #     logger.warning(f"redis_key {redis_key} has no hash key")
+                # elif hash_key in self.redis_hash_dict and self.redis_hash_dict[hash_key] == hash_res:
+                if redis_key in self.redis_data:
                     data_map.update(self.redis_data[redis_key])
                     continue
 
@@ -209,9 +210,13 @@ class PromptLoader:
                     logger.warning(f"failed to load redis_key {redis_key} cause redis key not found")
                     continue
                 self.redis_data[redis_key] = redis_data
-                if hash_res is not None:
-                    self.redis_hash_dict[hash_key] = hash_res
-
+                # if hash_res is not None:
+                #     self.redis_hash_dict[hash_key] = hash_res
+                # else:
+                #     # 如果从来没有设置过hash，说明写入方不支持，在这里帮忙hash一下
+                #     hash_val = md5(json.dumps(redis_data).encode('utf-8')).hexdigest()
+                #     self.redis_client.set(hash_key, hash_val)
+                #     self.redis_hash_dict[hash_key] = hash_val
                 data_map.update(redis_data)
         return data_map
 
