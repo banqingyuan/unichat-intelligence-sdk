@@ -98,8 +98,8 @@ class NPCFactory:
                 age=decode_profile["age"],
                 persona=decode_profile["persona"],
             )
-            res = session.execute(sql)
-            logger.info(f"save to database, persist AI: {res}")
+            session.execute(sql)
+            session.commit()
 
 
     def _match_prompt_tpl(self, persona_dict, provide_key, provide_value, ai_profile, ai_basic_info_list, no_use_list):
