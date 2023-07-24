@@ -1,11 +1,11 @@
 import hashlib
 import json
-import logging
 import random
 import time
 from concurrent.futures import ThreadPoolExecutor
 from copy import copy
 from typing import List
+from common_py.utils.logger import logger
 
 import yaml
 from common_py.client.azure_mongo import MongoDBClient
@@ -69,9 +69,9 @@ class NPCFactory:
                 executor.submit(self._match_prompt_tpl, tpl_persona_dict, k, v, ai_profile, ai_basic_info_list, no_use_list)
 
         if len(no_use_list) > 0:
-            logging.warning("useless personality: %s", no_use_list)
+            logger.warning("useless personality: %s", no_use_list)
         if len(tpl_persona_dict) > 0:
-            logging.warning("missing personality: %s", tpl_persona_dict.keys())
+            logger.warning("missing personality: %s", tpl_persona_dict.keys())
         ai_profile["nickname"] = _generate_random_name(gender=ai_profile["gender"])
         ai_profile["type"] = typ if typ != AI_type_emma else AI_type_passerby
         ai_profile["UID"] = UID
@@ -98,7 +98,9 @@ class NPCFactory:
                 age=decode_profile["age"],
                 persona=decode_profile["persona"],
             )
-            session.execute(sql)
+            res = session.execute(sql)
+            logger.info(f"save to database, persist AI: {res}")
+
 
     def _match_prompt_tpl(self, persona_dict, provide_key, provide_value, ai_profile, ai_basic_info_list, no_use_list):
         if provide_key in persona_dict:
