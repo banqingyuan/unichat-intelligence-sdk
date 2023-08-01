@@ -17,7 +17,7 @@ datasource:
         Age: user_age
         Gender: user_gender
 assistant_info: # supposed to obtain direct from outside structure
-  tpl: You're {nickname}, a {age}-year-old {MBTI}. {introduce}
+  tpl: You're {nickname}, a {age}-year-old {MBTI}
   variable:
     nickname:
       key: value # 占位符，无用
@@ -27,9 +27,9 @@ assistant_info: # supposed to obtain direct from outside structure
       key: value # 占位符，无用
     MBTI:
       key: value # 占位符，无用
-    introduce:
-      key: value # 占位符，无用
   reflection:
+    introduce:
+      description: introduce yourself, or describe yourself.
     interests:
       description: discuss topics or activities that the ai shows interest in, or the subjects that capture ai's attention.
     likes:
