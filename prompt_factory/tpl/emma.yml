@@ -17,7 +17,7 @@ datasource:
         Age: user_age
         Gender: user_gender
 assistant_info: # supposed to obtain direct from outside structure
-  tpl: Act as a {age} years old {gender}, named {nickname}, {MBTI} \n You are NOT an assistant or helper of any kind.
+  tpl: You're {nickname}, a {age}-year-old {MBTI}. {introduce}
   variable:
     nickname:
       key: value # 占位符，无用
@@ -26,6 +26,8 @@ assistant_info: # supposed to obtain direct from outside structure
     gender:
       key: value # 占位符，无用
     MBTI:
+      key: value # 占位符，无用
+    introduce:
       key: value # 占位符，无用
   reflection:
     interests:

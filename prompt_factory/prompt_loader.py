@@ -1,17 +1,11 @@
-import json
 import queue
 import threading
-import time
 from concurrent.futures import ThreadPoolExecutor
-from hashlib import md5
 from typing import List, Dict
-
-import os
 
 from common_py.const.ai_attr import AI_type_emma, AI_type_passerby, AI_type_npc, AI_type_tina
 
 from common_py.client.embedding import OpenAIEmbedding
-from common_py.client.pg import PgEngine
 from common_py.client.pinecone_client import PineconeClient
 from common_py.client.redis import RedisClient
 from common_py.utils.logger import logger
