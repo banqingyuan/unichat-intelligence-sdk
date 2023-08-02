@@ -71,6 +71,7 @@ class NPCFactory:
         ai_profile = {
             "avatar_id": avatar['avatar_id'],
             "voice_id": voice['voice_id'],
+            "persona_id": personality['_id'],
         }
         if typ == AI_type_emma:
             tpl_persona_dict = copy(emma_personality_dict)
@@ -118,6 +119,9 @@ class NPCFactory:
                 mbti=decode_profile["MBTI"],
                 age=decode_profile["age"],
                 persona=decode_profile["persona"],
+                persona_id=decode_profile["persona_id"],
+                avatar_id=decode_profile["avatar_id"],
+                voice_id=decode_profile["voice_id"],
             )
             session.execute(sql)
             session.commit()
