@@ -44,14 +44,34 @@ class NPCFactory:
     }
     """
     def create_new_tmp_AI(self, typ: str, UID: str, gender: str, exclude_personality_ids: List[str]) -> str:
+        gender = gender.lower()
         res = self.mongo_client.aggregate_from_collection("AI_personality", [
             {"$match": {"type": typ, "id": {"$nin": exclude_personality_ids}, "gender": gender}},
             {"$sample": {"size": 1}}
         ])
+
         if len(res) == 0:
             raise ValueError(f"No such AI personality: {typ}")
+
+        avatar_res = self.mongo_client.aggregate_from_collection("AI_avatar_profile", [
+            {"$sample": {"size": 1}}
+        ])
+        if len(avatar_res) == 0:
+            raise ValueError(f"Cannot find avatar profile")
+        avatar = avatar_res[0]
+
+        voice_res = self.mongo_client.aggregate_from_collection("AI_voice_library", [
+            {"$match": {"gender": gender}},
+            {"$sample": {"size": 1}}
+        ])
+        if len(voice_res) == 0:
+            raise ValueError(f"Cannot find voice library")
+        voice = voice_res[0]
         personality = res[0]
-        ai_profile = {}
+        ai_profile = {
+            "avatar_id": avatar['avatar_id'],
+            "voice_id": voice['voice_id'],
+        }
         if typ == AI_type_emma:
             tpl_persona_dict = copy(emma_personality_dict)
             ai_basic_info_list = copy(emma_basic_info)
