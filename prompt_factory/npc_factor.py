@@ -7,8 +7,8 @@ from copy import copy
 from typing import List
 
 from bson import ObjectId
-from common_py.utils.logger import logger
 import os
+import logging
 import yaml
 from common_py.client.azure_mongo import MongoDBClient
 from common_py.client.embedding import OpenAIEmbedding
@@ -19,9 +19,17 @@ from common_py.dto.ai_instance import AIInstance
 from common_py.utils.util import get_random_str
 from sqlalchemy.orm import Session
 from sqlalchemy import insert
-
 from prompt_factory.tpl_loader import emma_basic_info, emma_personality_dict, npc_personality_dict, npc_basic_info, \
     tina_basic_info, tina_personality_dict
+from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
+
+
+logger = wrapper_azure_log_handler(
+    wrapper_std_output(
+        logging.getLogger(__name__)
+    )
+)
+
 
 os.chdir(os.path.dirname(__file__))
 with open('tpl/firstname.yml', 'r') as f:
