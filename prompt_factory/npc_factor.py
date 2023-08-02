@@ -5,6 +5,8 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from copy import copy
 from typing import List
+
+from bson import ObjectId
 from common_py.utils.logger import logger
 import os
 import yaml
@@ -68,10 +70,11 @@ class NPCFactory:
             raise ValueError(f"Cannot find voice library")
         voice = voice_res[0]
         personality = res[0]
+        persona_id: ObjectId = personality['_id']
         ai_profile = {
             "avatar_id": avatar['avatar_id'],
             "voice_id": voice['voice_id'],
-            "persona_id": personality['_id'],
+            "persona_id": str(personality['_id']),
         }
         if typ == AI_type_emma:
             tpl_persona_dict = copy(emma_personality_dict)
