@@ -23,13 +23,11 @@ from prompt_factory.tpl_loader import emma_basic_info, emma_personality_dict, np
     tina_basic_info, tina_personality_dict
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
 
-
 logger = wrapper_azure_log_handler(
     wrapper_std_output(
         logging.getLogger(__name__)
     )
 )
-
 
 os.chdir(os.path.dirname(__file__))
 with open('tpl/firstname.yml', 'r') as f:
@@ -39,7 +37,6 @@ with open('tpl/lastname.yml', 'r') as f:
 
 
 class NPCFactory:
-
     """
     ai_profile schema:
     {
@@ -53,15 +50,44 @@ class NPCFactory:
         "MBTI": "",
     }
     """
+
     def create_new_tmp_AI(self, typ: str, UID: str, gender: str, exclude_personality_ids: List[str]) -> str:
         gender = gender.lower()
+        typ = typ.lower()
+        if typ == AI_type_emma:
+            self._gen_emma(UID, gender, exclude_personality_ids)
+        elif typ == AI_type_tina:
+            self._gen_tina(UID)
+        elif typ == AI_type_npc:
+            raise NotImplementedError
+
+    def _gen_tina(self, UID: str):
+        AID = _generate_AID(UID)
+        ai_profile = {
+            "avatar_id": '1001',
+            "voice_id": '6mOAa1TR13l2vZnlyUEV',
+            "persona_id": '00000',
+            "persona": "{}",
+            "nickname": "Tina",
+            "type": AI_type_tina,
+            "UID": UID,
+            "AID": AID,
+            "gender": "female",
+            "MBTI": "INTJ",
+            "age": 25,
+        }
+        self.redis_client.hset(f"{RedisAIInstanceInfo}{AID}", ai_profile)
+        self.redis_client.expire(f"{RedisAIInstanceInfo}{AID}", 60 * 60 * 24 * 30)
+
+
+    def _gen_emma(self, UID: str, gender: str, exclude_personality_ids: List[str]):
         res = self.mongo_client.aggregate_from_collection("AI_personality", [
-            {"$match": {"type": typ, "id": {"$nin": exclude_personality_ids}, "gender": gender}},
+            {"$match": {"type": AI_type_emma, "id": {"$nin": exclude_personality_ids}, "gender": gender}},
             {"$sample": {"size": 1}}
         ])
 
         if len(res) == 0:
-            raise ValueError(f"No such AI personality: {typ}")
+            raise ValueError(f"No such AI personality: {AI_type_emma}")
 
         avatar_res = self.mongo_client.aggregate_from_collection("AI_avatar_profile", [
             {"$sample": {"size": 1}}
@@ -78,35 +104,33 @@ class NPCFactory:
             raise ValueError(f"Cannot find voice library")
         voice = voice_res[0]
         personality = res[0]
-        persona_id: ObjectId = personality['_id']
         ai_profile = {
             "avatar_id": avatar['avatar_id'],
             "voice_id": voice['voice_id'],
             "persona_id": str(personality['_id']),
         }
-        if typ == AI_type_emma:
-            tpl_persona_dict = copy(emma_personality_dict)
-            ai_basic_info_list = copy(emma_basic_info)
-        elif typ == AI_type_npc:
-            tpl_persona_dict = copy(npc_personality_dict)
-            ai_basic_info_list = copy(npc_basic_info)
-        elif typ == AI_type_tina:
-            tpl_persona_dict = copy(tina_personality_dict)
-            ai_basic_info_list = copy(tina_basic_info)
-        else:
-            raise ValueError(f"Unknown AI type: {typ}")
+        # if typ == AI_type_emma:
+        tpl_persona_dict = copy(emma_personality_dict)
+        ai_basic_info_list = copy(emma_basic_info)
+        # elif typ == AI_type_npc:
+        #     tpl_persona_dict = copy(npc_personality_dict)
+        #     ai_basic_info_list = copy(npc_basic_info)
+        # elif typ == AI_type_tina:
+        #     tpl_persona_dict = copy(tina_personality_dict)
+        #     ai_basic_info_list = copy(tina_basic_info)
         ai_profile["persona"] = {}
         no_use_list = []
         with ThreadPoolExecutor(max_workers=20) as executor:
             for k, v in personality.items():
-                executor.submit(self._match_prompt_tpl, tpl_persona_dict, k, v, ai_profile, ai_basic_info_list, no_use_list)
+                executor.submit(self._match_prompt_tpl, tpl_persona_dict, k, v, ai_profile, ai_basic_info_list,
+                                no_use_list)
 
         if len(no_use_list) > 0:
             logger.warning("useless personality: %s", no_use_list)
         if len(tpl_persona_dict) > 0:
             logger.warning("missing personality: %s", tpl_persona_dict.keys())
         ai_profile["nickname"] = _generate_random_name(gender=ai_profile["gender"])
-        ai_profile["type"] = typ if typ != AI_type_emma else AI_type_passerby
+        ai_profile["type"] = AI_type_passerby
         ai_profile["UID"] = UID
         AID = _generate_AID(UID)
         ai_profile["AID"] = AID
@@ -137,14 +161,14 @@ class NPCFactory:
             session.execute(sql)
             session.commit()
 
-
     def _match_prompt_tpl(self, persona_dict, provide_key, provide_value, ai_profile, ai_basic_info_list, no_use_list):
         if provide_key in persona_dict:
             description = persona_dict[provide_key]
             persona_dict.pop(provide_key)
             val = {
-                "description_embedding": self._get_embedding(input=description),
-                "content_embedding": self._get_embedding(input=provide_value),
+                # "description_embedding": self._get_embedding(input=description),
+                # "content_embedding": self._get_embedding(input=provide_value),
+                "description": description,
                 "value": provide_value,
             }
             ai_profile["persona"][provide_key] = val
@@ -163,12 +187,12 @@ class NPCFactory:
         # leading to differences in the results of the comparison,
         # with a similarity gap of about 0.00001, which is acceptable
         if embedding_str is not None:
-            self.redis_client.expire(key, 60*60*24*30)
+            self.redis_client.expire(key, 60 * 60 * 24 * 30)
             embedding = json.loads(embedding_str)
             return embedding
         embedding = self.embedding_client(input=input)
         embedding_cache = json.dumps(embedding)
-        self.redis_client.setex(f"embedding_of_{md5}", embedding_cache, 60*60*24*30)
+        self.redis_client.setex(f"embedding_of_{md5}", embedding_cache, 60 * 60 * 24 * 30)
         return embedding
 
     def __init__(self):
@@ -190,7 +214,6 @@ def _generate_AID(UID: str) -> str:
     origin_str = f"{str(time.time())}_{get_random_str(6)}"
     md5 = hashlib.md5(origin_str.encode('utf-8')).hexdigest()
     return f"{UID}-{md5[-10:]}"
-
 
 # if __name__ == '__main__':
 #     redis_config = {

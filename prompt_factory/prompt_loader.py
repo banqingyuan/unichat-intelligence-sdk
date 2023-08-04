@@ -4,10 +4,11 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Dict
 
+from common_py.client.azure_mongo import MongoDBClient
 from common_py.const.ai_attr import AI_type_emma, AI_type_passerby, AI_type_npc, AI_type_tina
 
 from common_py.client.embedding import OpenAIEmbedding
-from common_py.client.pinecone_client import PineconeClient
+from common_py.client.pinecone_client import PineconeClient, PineconeClientFactory
 from common_py.client.redis import RedisClient
 from common_py.utils.similarity import similarity
 
@@ -99,7 +100,7 @@ class PromptLoader:
 
     def _get_vector_database(self, vdb_info, chat_embedding: List[float], **params) -> str:
         namespace = vdb_info.get('namespace', None)
-        metadata = vdb_info.get('metadata', None)
+        metadata = vdb_info.get('metadata', [])
         topK = vdb_info.get('top', 2)
         if namespace is None or metadata is None or len(metadata) == 0:
             return ""
@@ -112,21 +113,41 @@ class PromptLoader:
         else:
             query_dict = self._parse_single_metadata(metadata[0], **params)
         logger.debug(f"query from vector database with namespace {namespace}, filter: {query_dict}")
-        resp = self.pinecone_client.query_index(namespace=namespace, vector=chat_embedding, top_k=topK, filter=query_dict, include_metadata=True)
+
+        index = vdb_info['index']
+        resp = PineconeClientFactory().get_client(index=index).query_index(
+            namespace=namespace,
+            vector=chat_embedding,
+            top_k=topK,
+            filter=query_dict,
+            include_metadata=True
+        )
         if 'matches' not in resp:
             return ""
         vec_res = []
-        for match in resp['matches']:
-            if 'metadata' not in match:
-                continue
-            metadata = match['metadata']
-            if 'blob_name' not in metadata:
-                continue
-            blob_name = metadata['blob_name']
-            # cache in redis use blob_name as key
-            data = self.redis_client.get(blob_name)
-            vec_res.append(data)
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            for match in resp['matches']:
+                if 'metadata' not in match:
+                    continue
+                metadata = match['metadata']
+                if 'blob_name' not in metadata:
+                    continue
+                executor.submit(self._get_text_from_blob, vdb_info, metadata, vec_res)
+        logger.debug(f"vector database query result: {vec_res}")
         return '\n'.join(vec_res)
+
+    def _get_text_from_blob(self, vdb_info, metadata, vec_res: list):
+        text_key = metadata['text_key']
+        text_store = vdb_info['text_store']
+        data = ""
+        if text_store['type'] == 'redis':
+            data = self.redis_client.get(text_key)
+        elif text_store['type'] == 'mongodb':
+            res = self.mongodb_client.find_one_from_collection(text_store['collection'], {'_id': text_key})
+            if res is None:
+                return
+            data = res['text']
+        vec_res.append(data)
 
     def _maintain_top3(self, top3_list: List, item: tuple):
         if len(top3_list) < 3:
@@ -260,4 +281,4 @@ class PromptLoader:
         self._db_query_lock = threading.Lock()
         self.db_result = {}
         self.redis_client = RedisClient()
-        self.pinecone_client = PineconeClient()
+        self.mongodb_client = MongoDBClient()
