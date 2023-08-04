@@ -102,7 +102,7 @@ class PromptLoader:
         namespace = vdb_info.get('namespace', None)
         metadata = vdb_info.get('metadata', [])
         topK = vdb_info.get('top', 2)
-        if namespace is None or metadata is None or len(metadata) == 0:
+        if namespace is None or metadata is None:
             return ""
         query_dict = {}
         if len(metadata) > 1:
@@ -110,12 +110,12 @@ class PromptLoader:
             for meta_item in metadata:
                 query_list.append(self._parse_single_metadata(meta_item, **params))
             query_dict['$and'] = query_list
-        else:
+        elif len(metadata) == 1:
             query_dict = self._parse_single_metadata(metadata[0], **params)
         logger.debug(f"query from vector database with namespace {namespace}, filter: {query_dict}")
 
-        index = vdb_info['index']
-        resp = PineconeClientFactory().get_client(index=index).query_index(
+        index = vdb_info['index_name']
+        resp = PineconeClientFactory().get_client(index=index, environment="us-west4-gcp-free").query_index(
             namespace=namespace,
             vector=chat_embedding,
             top_k=topK,
@@ -130,7 +130,7 @@ class PromptLoader:
                 if 'metadata' not in match:
                     continue
                 metadata = match['metadata']
-                if 'blob_name' not in metadata:
+                if 'text_key' not in metadata:
                     continue
                 executor.submit(self._get_text_from_blob, vdb_info, metadata, vec_res)
         logger.debug(f"vector database query result: {vec_res}")
@@ -213,7 +213,7 @@ class PromptLoader:
                 raise Exception(f"param {param} not found")
         data_map.update(params)
         logger.debug(f"process datasource with params {params.keys()}")
-        self.datasource = self.tpl.get("datasource")
+        self.datasource = self.tpl.get("datasource", {})
         if "redis" in self.datasource:
             for redis_key_tpl, redis_detail in self.datasource["redis"].items():
                 redis_key = redis_key_tpl.format(**data_map)

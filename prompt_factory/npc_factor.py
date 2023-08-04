@@ -54,12 +54,14 @@ class NPCFactory:
     def create_new_tmp_AI(self, typ: str, UID: str, gender: str, exclude_personality_ids: List[str]) -> str:
         gender = gender.lower()
         typ = typ.lower()
+        AID = ""
         if typ == AI_type_emma:
-            self._gen_emma(UID, gender, exclude_personality_ids)
+            AID = self._gen_emma(UID, gender, exclude_personality_ids)
         elif typ == AI_type_tina:
-            self._gen_tina(UID)
+            AID = self._gen_tina(UID)
         elif typ == AI_type_npc:
             raise NotImplementedError
+        return AID
 
     def _gen_tina(self, UID: str):
         AID = _generate_AID(UID)
@@ -78,6 +80,7 @@ class NPCFactory:
         }
         self.redis_client.hset(f"{RedisAIInstanceInfo}{AID}", ai_profile)
         self.redis_client.expire(f"{RedisAIInstanceInfo}{AID}", 60 * 60 * 24 * 30)
+        return AID
 
 
     def _gen_emma(self, UID: str, gender: str, exclude_personality_ids: List[str]):
