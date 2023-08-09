@@ -108,6 +108,7 @@ class PromptLoader:
         topK = vdb_info.get('top', 2)
         if namespace is None or metadata is None:
             return ""
+        namespace = namespace.format(**params)
         query_dict = {}
         if len(metadata) > 1:
             query_list = []
