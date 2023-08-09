@@ -15,6 +15,7 @@ knowledge_layer:
         text_store:
           type: mongodb
           collection: AI_tina_knowledge
+          field: text
         namespace: unichat_knowledge_database
         top: 3
 
