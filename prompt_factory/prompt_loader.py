@@ -149,7 +149,7 @@ class PromptLoader:
         if text_store['type'] == 'redis':
             data = self.redis_client.get(text_key)
         elif text_store['type'] == 'mongodb':
-            res = self.mongodb_client.find_one_from_collection(text_store['collection'], {'_id': Object(text_key)})
+            res = self.mongodb_client.find_one_from_collection(text_store['collection'], {'_id': ObjectId(text_key)})
             if res is None:
                 return
             data = res[text_store.get('field', 'text')]
