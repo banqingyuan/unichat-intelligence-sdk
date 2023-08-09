@@ -151,7 +151,7 @@ class PromptLoader:
             res = self.mongodb_client.find_one_from_collection(text_store['collection'], {'_id': Object(text_key)})
             if res is None:
                 return
-            data = res[vdb_info.get('field', 'text')]
+            data = res[text_store.get('field', 'text')]
         vec_res.append(data)
 
     def _maintain_top3(self, top3_list: List, item: tuple):
