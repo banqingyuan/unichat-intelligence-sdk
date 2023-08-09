@@ -118,7 +118,17 @@ user_info:
       description: talk about the ai's recent emotional state or discuss the mood that the ai is currently in.
     user_mood:
       description: discuss the user's emotional state or delve into the mood the user appears to be in.
-#    other_reflection:
+    other_reflection:
+      vector_database:
+        index_name: knowledge-vdb
+        text_store:
+          type: mongodb
+          collection: AI_memory_block
+        metadata:
+          - participates:contain:{UID}
+          - memory_type:equal:memory_block
+        namespace: AI-{AID}
+        top: 3
 #      vector_database:
 #        index_name: knowledge-vdb
 #        namespace: {AID}
