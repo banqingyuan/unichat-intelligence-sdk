@@ -11,6 +11,7 @@ from common_py.client.embedding import OpenAIEmbedding
 from common_py.client.pinecone_client import PineconeClient, PineconeClientFactory
 from common_py.client.redis import RedisClient
 from common_py.utils.similarity import similarity
+from opencensus.trace import execution_context
 
 from prompt_factory.tpl_loader import emma_config, tina_config, npc_config
 
@@ -28,27 +29,30 @@ logger = wrapper_azure_log_handler(
 class PromptLoader:
 
     def parse_prompt(self, input: str, **params) -> str:
-        prompt_queue: queue.Queue = queue.Queue()
-        variable_data = self._process_datasource(**params)
-        if "persona" in variable_data:
-            variable_data.update(variable_data["persona"])
-            variable_data.pop("persona")
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            idx = 0
-            for tpl_name, tpl_block in self.tpl.items():
-                if tpl_name in specific_key:
-                    continue
-                executor.submit(self._get_prompt_block, idx, tpl_block, input, prompt_queue, **variable_data)
-                idx += 1
-        res_list = []
-        while not prompt_queue.empty():
-            res_list.append(prompt_queue.get())
-        # 按照 idx 从小到大排序
-        sorted_lst = sorted(res_list, key=lambda x: x[0])
+        tracer = execution_context.get_opencensus_tracer()
+        with tracer.span(name="load_prompt_template_datasource"):
+            prompt_queue: queue.Queue = queue.Queue()
+            variable_data = self._process_datasource(**params)
+            if "persona" in variable_data:
+                variable_data.update(variable_data["persona"])
+                variable_data.pop("persona")
+        with tracer.span(name="assemble_prompt") as span:
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                idx = 0
+                for tpl_name, tpl_block in self.tpl.items():
+                    if tpl_name in specific_key:
+                        continue
+                    executor.submit(self._get_prompt_block, idx, tpl_block, input, prompt_queue, **variable_data)
+                    idx += 1
+            res_list = []
+            while not prompt_queue.empty():
+                res_list.append(prompt_queue.get())
+            # 按照 idx 从小到大排序
+            sorted_lst = sorted(res_list, key=lambda x: x[0])
 
-        # 将排序后的字符串通过 \n 连接起来
-        result = '\n'.join([item[1] for item in sorted_lst])
-        return result
+            # 将排序后的字符串通过 \n 连接起来
+            result = '\n'.join([item[1] for item in sorted_lst])
+            return result
 
     def _get_prompt_block(self, idx: int, tpl: dict, chat_input: str, q: queue.Queue, **params):
         try:
