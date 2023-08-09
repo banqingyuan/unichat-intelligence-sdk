@@ -124,6 +124,7 @@ user_info:
         text_store:
           type: mongodb
           collection: AI_memory_block
+          field: summary
         metadata:
           - participates:contain:{UID}
           - memory_type:equal:memory_block
