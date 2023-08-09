@@ -3,6 +3,7 @@ import queue
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Dict
+from bson import ObjectId
 
 from common_py.client.azure_mongo import MongoDBClient
 from common_py.const.ai_attr import AI_type_emma, AI_type_passerby, AI_type_npc, AI_type_tina
