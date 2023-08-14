@@ -11,14 +11,16 @@ from common_py.const.ai_attr import AI_type_emma, AI_type_passerby, AI_type_npc,
 from common_py.client.embedding import OpenAIEmbedding
 from common_py.client.pinecone_client import PineconeClient, PineconeClientFactory
 from common_py.client.redis import RedisClient
+from common_py.dto.ai_instance import AIBasicInformation
+from common_py.dto.user import UserBasicInformation
 from common_py.utils.similarity import similarity
 from opencensus.trace import execution_context
+from pinecone import QueryResponse
 
 from prompt_factory.tpl_loader import emma_config, tina_config, npc_config
 
 specific_key = ['input', 'datasource']
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
-
 
 logger = wrapper_azure_log_handler(
     wrapper_std_output(
@@ -55,6 +57,53 @@ class PromptLoader:
             result = '\n'.join([item[1] for item in sorted_lst])
             return result
 
+    def find_useful_LUI(self, inputs: List[str],
+                        AI_info: AIBasicInformation,
+                        speaker_info: UserBasicInformation) -> Dict[str, bool]:
+
+        access_level = ['public']
+        if AI_info.UID == speaker_info.UID:
+            access_level.append('private')
+        q = queue.Queue()
+        lui_results = {}
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            for message_input in inputs:
+                for item in message_input.split('.'):
+                    executor.submit(self._query_lui_library_from_vector_database, item, AI_info.type, access_level, q)
+        while not q.empty():
+            res = q.get()
+            lui_results.update(res)
+        return lui_results
+
+    def _query_lui_library_from_vector_database(self,
+                                                input_str: str,
+                                                AI_type: str,
+                                                access_level: List[str],
+                                                q: queue.Queue):
+        try:
+            lui_functions = {}
+            results: QueryResponse = PineconeClientFactory().get_client(
+                index="knowledge-vdb",
+                environment="us-west4-gcp-free"
+            ).query_index(
+                namespace='lui_function_library',
+                text=input_str,
+                filter={"and": {
+                                "AI_type": {"$eq": AI_type},
+                                "access_level": {"$in": access_level}
+                                }
+                        },
+                include_values=False,
+                include_metadata=True,
+            )
+            for result in results['matches']:
+                if float(result['score']) < 0.9:
+                    continue
+                lui_functions[result['metadata']['function_name']] = True
+            q.put_nowait(lui_functions)
+        except Exception as e:
+            logger.exception(e)
+
     def _get_prompt_block(self, idx: int, tpl: dict, chat_input: str, q: queue.Queue, **params):
         try:
             fixed_tpl = tpl.get("tpl", None)
@@ -85,7 +134,8 @@ class PromptLoader:
             reflection_res = params.get(reflection_name, None)
             if reflection_res is None:
                 if "vector_database" in reflection_source:
-                    accepted_reflection[reflection_name] = self._get_vector_database(reflection_source["vector_database"], chat_embedding, **params)
+                    accepted_reflection[reflection_name] = self._get_vector_database(
+                        reflection_source["vector_database"], chat_embedding, **params)
                 continue
             reflection_description_embedding = reflection_res.get('description_embedding', None)
             reflection_content_embedding = reflection_res.get('content_embedding', None)
@@ -175,40 +225,40 @@ class PromptLoader:
                     variable_res[key] = params[key]
                     continue
                 # else:
-                    # if 'db_source' not in variable:
-                    #     raise Exception(f"variable {key} has no db_source and can not found in redis")
-                    # if 'pg_table' not in self.datasource:
-                    #     raise Exception(f"variable {key} has no pg_table and can not found in redis")
-                    # database_key = variable['db_source']
-                    # table, column_pair = database_key.split('#')[0], database_key.split('#')[1]
-                    # column_name, column_value = column_pair.split(':')[0], column_pair.split(':')[1]
-                    # if table in self.db_result:
-                    #     table_res = self.db_result[table]
-                    #     if column_name not in table_res:
-                    #         raise Exception(f"column {column_name} not found in table {table}")
-                    #     variable_res[key] = table_res[column_name]
-                    #     continue
-                    # with self._db_query_lock:
-                    #     if table not in self.db_result:
-                    #         with Session(self.pg_instance) as session:
-                    #             value = params.get(column_value, None)
-                    #             if value is None:
-                    #                 raise Exception(f"column {column_value} not found in params")
-                    #             result = session.execute(text(f"select * from {table} where {column_name} = {value}"))
-                    #             rows = result.fetchall()
-                    #             if len(rows) == 0:
-                    #                 raise Exception(f"column {column_name} not found in table {table}")
-                    #             logger.debug(
-                    #                 f"query table {table} with column {column_name} = {value}, res: {rows}, type: {type(rows)}")
-                    #             self.db_result[table] = rows[0]
-                    # if table in self.db_result:
-                    #     table_res = self.db_result[table]
-                    #     if column_name not in table_res:
-                    #         raise Exception(f"column {column_name} not found in table {table}")
-                    #     variable_res[key] = table_res[column_name]
-                    #     continue
-                    # else:
-                    #     raise Exception(f"column {column_name} not found either in table {table} or in redis")
+                # if 'db_source' not in variable:
+                #     raise Exception(f"variable {key} has no db_source and can not found in redis")
+                # if 'pg_table' not in self.datasource:
+                #     raise Exception(f"variable {key} has no pg_table and can not found in redis")
+                # database_key = variable['db_source']
+                # table, column_pair = database_key.split('#')[0], database_key.split('#')[1]
+                # column_name, column_value = column_pair.split(':')[0], column_pair.split(':')[1]
+                # if table in self.db_result:
+                #     table_res = self.db_result[table]
+                #     if column_name not in table_res:
+                #         raise Exception(f"column {column_name} not found in table {table}")
+                #     variable_res[key] = table_res[column_name]
+                #     continue
+                # with self._db_query_lock:
+                #     if table not in self.db_result:
+                #         with Session(self.pg_instance) as session:
+                #             value = params.get(column_value, None)
+                #             if value is None:
+                #                 raise Exception(f"column {column_value} not found in params")
+                #             result = session.execute(text(f"select * from {table} where {column_name} = {value}"))
+                #             rows = result.fetchall()
+                #             if len(rows) == 0:
+                #                 raise Exception(f"column {column_name} not found in table {table}")
+                #             logger.debug(
+                #                 f"query table {table} with column {column_name} = {value}, res: {rows}, type: {type(rows)}")
+                #             self.db_result[table] = rows[0]
+                # if table in self.db_result:
+                #     table_res = self.db_result[table]
+                #     if column_name not in table_res:
+                #         raise Exception(f"column {column_name} not found in table {table}")
+                #     variable_res[key] = table_res[column_name]
+                #     continue
+                # else:
+                #     raise Exception(f"column {column_name} not found either in table {table} or in redis")
         return variable_res
 
     def _process_datasource(self, **params) -> dict:
