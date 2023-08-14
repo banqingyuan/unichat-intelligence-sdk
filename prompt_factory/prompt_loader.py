@@ -15,6 +15,7 @@ from common_py.dto.ai_instance import AIBasicInformation
 from common_py.dto.user import UserBasicInformation
 from common_py.utils.similarity import similarity
 from opencensus.trace import execution_context
+from opencensus.trace.tracer import Tracer
 from pinecone import QueryResponse
 
 from prompt_factory.tpl_loader import emma_config, tina_config, npc_config
@@ -31,8 +32,7 @@ logger = wrapper_azure_log_handler(
 
 class PromptLoader:
 
-    def parse_prompt(self, input: str, **params) -> str:
-        tracer = execution_context.get_opencensus_tracer()
+    def parse_prompt(self, input_str: str, params, tracer: Tracer) -> str:
         with tracer.span(name="load_prompt_template_datasource"):
             prompt_queue: queue.Queue = queue.Queue()
             variable_data = self._process_datasource(**params)
@@ -45,7 +45,7 @@ class PromptLoader:
                 for tpl_name, tpl_block in self.tpl.items():
                     if tpl_name in specific_key:
                         continue
-                    executor.submit(self._get_prompt_block, idx, tpl_block, input, prompt_queue, **variable_data)
+                    executor.submit(self._get_prompt_block, idx, tpl_block, input_str, prompt_queue, **variable_data)
                     idx += 1
             res_list = []
             while not prompt_queue.empty():
@@ -59,7 +59,8 @@ class PromptLoader:
 
     def find_useful_LUI(self, inputs: List[str],
                         AI_info: AIBasicInformation,
-                        speaker_info: UserBasicInformation) -> Dict[str, bool]:
+                        speaker_info: UserBasicInformation,
+                        tracer: Tracer) -> Dict[str, bool]:
 
         access_level = ['public']
         if AI_info.UID == speaker_info.UID:
