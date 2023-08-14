@@ -4,6 +4,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Dict
 from bson import ObjectId
+from common_py.ai_toolkit.openAI import filter_brackets
 
 from common_py.client.azure_mongo import MongoDBClient
 from common_py.const.ai_attr import AI_type_emma, AI_type_passerby, AI_type_npc, AI_type_tina
@@ -69,6 +70,7 @@ class PromptLoader:
         lui_results = {}
         with ThreadPoolExecutor(max_workers=5) as executor:
             for message_input in inputs:
+                message_input = filter_brackets(message_input)
                 for item in message_input.split('.'):
                     executor.submit(self._query_lui_library_from_vector_database, item, AI_info.type, access_level, q)
         while not q.empty():
@@ -89,11 +91,10 @@ class PromptLoader:
             ).query_index(
                 namespace='lui_function_library',
                 text=input_str,
-                filter={"and": {
-                                "AI_type": {"$eq": AI_type},
-                                "access_level": {"$in": access_level}
-                                }
-                        },
+                filter={"$and": [
+                    {"AI_type": {"$eq": AI_type}},
+                    {"access_level": {"$in": access_level}}
+                ]},
                 include_values=False,
                 include_metadata=True,
             )

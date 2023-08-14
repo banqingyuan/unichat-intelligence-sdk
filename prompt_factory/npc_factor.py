@@ -147,11 +147,12 @@ class NPCFactory:
         if not ai_profile:
             raise ValueError(f"No such AI: {AID}")
         decode_profile = {k.decode(): v.decode() for k, v in ai_profile.items()}
+        self.redis_client.hset(f"{RedisAIInstanceInfo}{AID}", {"type": AI_type_emma})
         with Session(self.pg_instance) as session:
             sql = insert(AIInstance).values(
                 id=decode_profile["AID"],
                 uid=decode_profile["UID"],
-                type=decode_profile["type"],
+                type=decode_profile["type"] if decode_profile['type'] != 'passerby' else 'emma',
                 nickname=decode_profile["nickname"],
                 gender=decode_profile["gender"],
                 mbti=decode_profile["MBTI"],
