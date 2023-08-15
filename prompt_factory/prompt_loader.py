@@ -1,6 +1,7 @@
 import logging
 import queue
 import threading
+from copy import deepcopy
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Dict
 from bson import ObjectId
@@ -62,21 +63,21 @@ class PromptLoader:
                         AI_info: AIBasicInformation,
                         speaker_info: UserBasicInformation,
                         tracer: Tracer) -> Dict[str, bool]:
-
-        access_level = ['public']
-        if AI_info.UID == speaker_info.UID:
-            access_level.append('private')
-        q = queue.Queue()
-        lui_results = {}
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            for message_input in inputs:
-                message_input = filter_brackets(message_input)
-                for item in message_input.split('.'):
-                    executor.submit(self._query_lui_library_from_vector_database, item, AI_info.type, access_level, q)
-        while not q.empty():
-            res = q.get()
-            lui_results.update(res)
-        return lui_results
+        with tracer.span(name="find_useful_LUI"):
+            access_level = ['public']
+            if AI_info.UID == speaker_info.UID:
+                access_level.append('private')
+            q = queue.Queue()
+            lui_results = {}
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                for message_input in inputs:
+                    message_input = filter_brackets(message_input)
+                    for item in message_input.split('.'):
+                        executor.submit(self._query_lui_library_from_vector_database, item, AI_info.type, access_level, q)
+            while not q.empty():
+                res = q.get()
+                lui_results.update(res)
+            return lui_results
 
     def _query_lui_library_from_vector_database(self,
                                                 input_str: str,
