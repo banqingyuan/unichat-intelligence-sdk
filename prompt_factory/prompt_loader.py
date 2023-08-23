@@ -7,13 +7,14 @@ from bson import ObjectId
 from common_py.ai_toolkit.openAI import filter_brackets
 
 from common_py.client.azure_mongo import MongoDBClient
+from common_py.client.pg import query_vector_info
 from common_py.const.ai_attr import AI_type_emma, AI_type_passerby, AI_type_npc, AI_type_tina
 
 from common_py.client.embedding import OpenAIEmbedding
 from common_py.client.pinecone_client import PineconeClientFactory
 from common_py.client.redis_client import RedisClient
 from common_py.dto.ai_instance import AIBasicInformation
-from common_py.dto.lui_usecase import LUIUsecaseInfo
+from common_py.dto.lui_usecase import LUIUsecaseInfo, LUIUsecase
 from common_py.dto.user import UserBasicInformation
 from common_py.utils.similarity import similarity
 from opencensus.trace.tracer import Tracer
@@ -84,7 +85,8 @@ class PromptLoader:
                                          q: queue.Queue):
         try:
             lui_functions = {}
-            results: List[LUIUsecaseInfo] = query_lui_usecase_info(
+            results: List = query_vector_info(
+                model=LUIUsecase,
                 input_data=input_str,
                 meta_filter={"$and": [
                     {"AI_type": {"$eq": AI_type}},
@@ -93,6 +95,7 @@ class PromptLoader:
                 top_k=3,
                 threshold=0.9,
             )
+            results = [LUIUsecaseInfo(**item) for item in results]
             for result in results:
                 lui_functions[result.function_name] = True
             q.put_nowait(lui_functions)
