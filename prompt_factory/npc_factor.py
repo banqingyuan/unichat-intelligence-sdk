@@ -13,7 +13,7 @@ import yaml
 from common_py.client.azure_mongo import MongoDBClient
 from common_py.client.embedding import OpenAIEmbedding
 from common_py.client.pg import PgEngine
-from common_py.client.redis import RedisClient, RedisAIInstanceInfo
+from common_py.client.redis_client import RedisClient, RedisAIInstanceInfo
 from common_py.const.ai_attr import AI_type_passerby, AI_type_emma, AI_type_npc, AI_type_tina
 from common_py.dto.ai_instance import AIInstance
 from common_py.utils.util import get_random_str
@@ -81,7 +81,6 @@ class NPCFactory:
         self.redis_client.hset(f"{RedisAIInstanceInfo}{AID}", ai_profile)
         self.redis_client.expire(f"{RedisAIInstanceInfo}{AID}", 60 * 60 * 24 * 30)
         return AID
-
 
     def _gen_emma(self, UID: str, gender: str, exclude_personality_ids: List[str]):
         res = self.mongo_client.aggregate_from_collection("AI_personality", [

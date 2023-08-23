@@ -2,11 +2,14 @@ import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
 from hashlib import md5
+from typing import List
 
 from common_py.client.azure_mongo import MongoDBClient
 from common_py.client.embedding import OpenAIEmbedding
-from common_py.client.pinecone_client import PineconeClientFactory
+from common_py.client.pg import update_by_id, query_vector_info, PgEngine, batch_insert_vector
+from common_py.dto.unicaht_knowledge import UnichatKnowledge, UnichatKnowledgeInfo, load_all_knowledge
 from common_py.utils.logger import wrapper_std_output
+from sqlalchemy.orm import Session
 
 split_code = '*****'
 
@@ -16,15 +19,17 @@ logger = wrapper_std_output(logging.getLogger(__name__))
 class KnowledgeLoader:
 
     def load_knowledge(self, knowledge_text: str):
-        ids_res = self.mongo_client.find_from_collection("AI_tina_knowledge", projection=["_id"], filter={})
+
+        res = load_all_knowledge()
         ids = {}
-        for id_item in ids_res:
-            ids[str(id_item["_id"])] = True
+        for item in res:
+            ids[item.id] = True
         logger.debug(f"ids: {ids}")
 
         knowledge_block = knowledge_text.split(split_code)
         fresh_ids = []
         new_round_meta = md5(knowledge_text.encode()).hexdigest()
+        tasks = []
         with ThreadPoolExecutor(max_workers=10) as executor:
             for item in knowledge_block:
                 if item == "":
@@ -34,48 +39,57 @@ class KnowledgeLoader:
                 if md5_of_item in ids:
                     ids.pop(md5_of_item)
                     logger.debug(f"knowledge item already exists: {md5_of_item}")
-                    executor.submit(self._refresh_pinecone_metadata, md5_of_item, new_round_meta)
+                    executor.submit(self._refresh_pgvector_metadata, md5_of_item, new_round_meta)
                     continue
-                executor.submit(self._load_knowledge_item, item, md5_of_item, new_round_meta)
-        if len(ids) > 0:
-            self.mongo_client.delete_many_document("AI_tina_knowledge", {"_id": {"$nin": fresh_ids}})
-            self.pinecone_client.delete_item(namespace="unichat_knowledge_database",
-                                             filter={"valid_tag": {'$nin': [new_round_meta]}})
+                task = executor.submit(self._load_knowledge_item, item, md5_of_item, new_round_meta)
+                tasks.append(task)
+        items: List[UnichatKnowledgeInfo] = []
+        for task in tasks:
+            item = task.result()
+            if isinstance(item, UnichatKnowledgeInfo):
+                items.append(item)
+        batch_insert_vector(
+            model_cls=UnichatKnowledge,
+            data_list=items,
+        )
+        # if len(ids) > 0:
+        #     self.mongo_client.delete_many_document("AI_tina_knowledge", {"_id": {"$nin": fresh_ids}})
+        #     self.pinecone_client.delete_item(namespace="unichat_knowledge_database",
+        #                                      filter={"valid_tag": {'$nin': [new_round_meta]}})
 
-    def _refresh_pinecone_metadata(self, md5_of_item: str, new_round_meta: str):
+    def _refresh_pgvector_metadata(self, md5_of_item: str, new_round_meta: str):
         try:
-            self.pinecone_client.set_metadata(id=md5_of_item,
-                                              metadata={"text_key": md5_of_item,
-                                                        "valid_tag": new_round_meta},
-                                              namespace="unichat_knowledge_database")
+            update_by_id(
+                model_cls=UnichatKnowledge,
+                record_id=md5_of_item,
+                update_fields={'valid_tag': new_round_meta}
+            )
         except Exception as e:
-            logger.exception(f"refresh pinecone metadata failed: {e}")
+            logger.exception(f"refresh pgvector AI knowledge metadata failed: {e}")
 
     def _load_knowledge_item(self, item: str, md5_of_item: str, new_valid_tag: str):
         try:
-            id = self.mongo_client.create_one_document("AI_tina_knowledge", {"_id": md5_of_item, "text": item})
-            logger.debug(f"create knowledge item succeed: {id}")
-            embedding = self.embedding_client(input=item)
-            upsert_response = self.pinecone_client.upsert_index(id=md5(item.encode()).hexdigest(),
-                                                                vector=embedding,
-                                                                metadata={
-                                                                    "text_key": md5_of_item,
-                                                                    "valid_tag": new_valid_tag
-                                                                },
-                                                                namespace="unichat_knowledge_database")
-            logger.debug(f"upsert knowledge item: {upsert_response}")
+            knowledge_info = UnichatKnowledgeInfo(
+                id=md5_of_item,
+                text=item,
+                embedding=self.embedding_client(input=item),
+                valid_tag=new_valid_tag
+            )
+            return knowledge_info
         except Exception as e:
             logger.exception(f"create knowledge item failed: {e}")
 
     def __init__(self):
-        self.mongo_client: MongoDBClient = MongoDBClient()
         self.embedding_client: OpenAIEmbedding = OpenAIEmbedding()
-        pinecone_factory = PineconeClientFactory()
-        self.pinecone_client = pinecone_factory.get_client("knowledge-vdb", environment="us-west4-gcp-free")
 
 
 if __name__ == "__main__":
-    MongoDBClient(DB_NAME="unichat-backend")
+    pg_config = {
+        "host": "c.postgre-east.postgres.database.azure.com",
+        "user": "citus",
+        "db_name": "citus"
+    }
+    PgEngine(**pg_config)
 
     knowledge_text = """应用概述：这部分包含应用的基本信息
   1. 基本介绍：我们希望让朋友们能够随时随地跨越空间距离相聚，就像在现实中一样面对面交谈，观看视频，玩桌游。Unichat致力于打造一个无障碍、简洁直观的社交空间，让社交回归本质，回归人和人之间的直接交流。我们的愿景是将远程社交从二维升级为三维，通过XR技术，我们希望能还原甚至超越现实中的社交和聚会体验。
@@ -87,7 +101,7 @@ Tina能力：详细介绍Tina的功能和能力。
   3. 有反馈也可以和Tina说哦，会帮你转达
 *****
 应用交互：解释应用中各种交互的方式。
-  1. 如何切换手势：将Quest 2手柄垂直放在桌面上，把手移到面前晃动，即可切换成手势操作。
+  1. 如何切换手势：将Quest 2手柄垂直放在桌面上，把手 移到面前晃动，即可切换成手势操作。
   2. 呼出主菜单：左手张开手心朝向自己，捏合拇指和食指后松开
   3. 左手轮盘快速选择：左手张开手心朝向自己，捏合拇指和食指后向相应方向微微移动手后松开即可快捷操作。
   4. 调整高度：双手朝前，捏合双手拇指食指垂直向上或向下拖动，可以每次调整15cm高度。

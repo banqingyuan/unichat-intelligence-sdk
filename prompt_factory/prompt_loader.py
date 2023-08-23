@@ -1,7 +1,6 @@
 import logging
 import queue
 import threading
-from copy import deepcopy
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Dict
 from bson import ObjectId
@@ -11,14 +10,13 @@ from common_py.client.azure_mongo import MongoDBClient
 from common_py.const.ai_attr import AI_type_emma, AI_type_passerby, AI_type_npc, AI_type_tina
 
 from common_py.client.embedding import OpenAIEmbedding
-from common_py.client.pinecone_client import PineconeClient, PineconeClientFactory
-from common_py.client.redis import RedisClient
+from common_py.client.pinecone_client import PineconeClientFactory
+from common_py.client.redis_client import RedisClient
 from common_py.dto.ai_instance import AIBasicInformation
+from common_py.dto.lui_usecase import LUIUsecaseInfo
 from common_py.dto.user import UserBasicInformation
 from common_py.utils.similarity import similarity
-from opencensus.trace import execution_context
 from opencensus.trace.tracer import Tracer
-from pinecone import QueryResponse
 
 from prompt_factory.tpl_loader import emma_config, tina_config, npc_config
 
@@ -73,36 +71,30 @@ class PromptLoader:
                 for message_input in inputs:
                     message_input = filter_brackets(message_input)
                     for item in message_input.split('.'):
-                        executor.submit(self._query_lui_library_from_vector_database, item, AI_info.type, access_level, q)
+                        executor.submit(self._query_lui_library_from_pgvector, item, AI_info.type, access_level, q)
             while not q.empty():
                 res = q.get()
                 lui_results.update(res)
             return lui_results
 
-    def _query_lui_library_from_vector_database(self,
-                                                input_str: str,
-                                                AI_type: str,
-                                                access_level: List[str],
-                                                q: queue.Queue):
+    def _query_lui_library_from_pgvector(self,
+                                         input_str: str,
+                                         AI_type: str,
+                                         access_level: List[str],
+                                         q: queue.Queue):
         try:
             lui_functions = {}
-            results: QueryResponse = PineconeClientFactory().get_client(
-                index="knowledge-vdb",
-                environment="us-west4-gcp-free"
-            ).query_index(
-                namespace='lui_function_library',
-                text=input_str,
-                filter={"$and": [
+            results: List[LUIUsecaseInfo] = query_lui_usecase_info(
+                input_data=input_str,
+                meta_filter={"$and": [
                     {"AI_type": {"$eq": AI_type}},
                     {"access_level": {"$in": access_level}}
                 ]},
-                include_values=False,
-                include_metadata=True,
+                top_k=3,
+                threshold=0.9,
             )
-            for result in results['matches']:
-                if float(result['score']) < 0.9:
-                    continue
-                lui_functions[result['metadata']['function_name']] = True
+            for result in results:
+                lui_functions[result.function_name] = True
             q.put_nowait(lui_functions)
         except Exception as e:
             logger.exception(e)
