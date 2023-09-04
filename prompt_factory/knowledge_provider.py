@@ -4,12 +4,10 @@ from concurrent.futures import ThreadPoolExecutor
 from hashlib import md5
 from typing import List
 
-from common_py.client.azure_mongo import MongoDBClient
 from common_py.client.embedding import OpenAIEmbedding
 from common_py.client.pg import update_by_id, query_vector_info, PgEngine, batch_insert_vector
 from common_py.dto.unicaht_knowledge import UnichatKnowledge, UnichatKnowledgeInfo, load_all_knowledge
 from common_py.utils.logger import wrapper_std_output
-from sqlalchemy.orm import Session
 
 split_code = '*****'
 

@@ -37,15 +37,16 @@ class PromptLoader:
         with tracer.span(name="load_prompt_template_datasource"):
             prompt_queue: queue.Queue = queue.Queue()
             variable_data = self._process_datasource(**params)
-            if "persona" in variable_data:
-                variable_data.update(variable_data["persona"])
-                variable_data.pop("persona")
+            # if "persona" in variable_data:
+            #     variable_data.update(variable_data["persona"])
+            #     variable_data.pop("persona")
         with tracer.span(name="assemble_prompt") as span:
+            if 'prompt_tpl' not in variable_data:
+                raise Exception("prompt_tpl not found in variable_data")
+            prompt_tpl = variable_data['prompt_tpl']
             with ThreadPoolExecutor(max_workers=5) as executor:
                 idx = 0
-                for tpl_name, tpl_block in self.tpl.items():
-                    if tpl_name in specific_key:
-                        continue
+                for tpl_name, tpl_block in prompt_tpl.items():
                     executor.submit(self._get_prompt_block, idx, tpl_block, input_str, prompt_queue, **variable_data)
                     idx += 1
             res_list = []
@@ -108,48 +109,43 @@ class PromptLoader:
             fixed_res = ""
             try:
                 if fixed_tpl is not None:
-                    # variables_res = self._get_variables_results(tpl, **params)
-                    fixed_res = fixed_tpl.format(**params)
+                    variables_res = self._get_variables_results(tpl, **params)
+                    fixed_res = fixed_tpl.format(**variables_res)
             except KeyError as e:
                 logger.warning(f"variable not found when try to format tpl :{fixed_tpl}. key: {e}")
-
-            reflection = tpl.get("reflection", None)
-            if reflection is None:
-                q.put((idx, fixed_res))
-                return
-            reflection_res = self._get_reflection_results(reflection, chat_input, **params)
-            q.put((idx, fixed_res + '\n' + reflection_res))
+            q.put((idx, fixed_res))
+            return
         except Exception as e:
             logger.exception(e)
 
-    def _get_reflection_results(self, reflection, chat_input, **params) -> str:
-        # Calculating the similarity of two 1536-dimensional vectors takes on average 1ms
-        accepted_reflection = {}
-        chat_embedding = OpenAIEmbedding()(input=chat_input)
-        top_3_of_description = []
-        top_3_of_content = []
-        for reflection_name, reflection_source in reflection.items():
-            reflection_res = params.get(reflection_name, None)
-            if reflection_res is None:
-                if "vector_database" in reflection_source:
-                    accepted_reflection[reflection_name] = self._get_vector_database(
-                        reflection_source["vector_database"], chat_embedding, **params)
-                continue
-            reflection_description_embedding = reflection_res.get('description_embedding', None)
-            reflection_content_embedding = reflection_res.get('content_embedding', None)
-            reflection_value = reflection_res.get('value', None)
-
-            description_similarity = similarity(chat_embedding, reflection_description_embedding)
-            content_similarity = similarity(chat_embedding, reflection_content_embedding)
-
-            self._maintain_top3(top_3_of_description, (description_similarity, reflection_name, reflection_value))
-            self._maintain_top3(top_3_of_content, (content_similarity, reflection_name, reflection_value))
-        for item in top_3_of_content:
-            accepted_reflection[item[1]] = item[2]
-        for item in top_3_of_description:
-            accepted_reflection[item[1]] = item[2]
-        reflection_str = '\n'.join([f'{value}' for value in accepted_reflection.values()])
-        return reflection_str
+    # def _get_reflection_results(self, reflection, chat_input, **params) -> str:
+    #     # Calculating the similarity of two 1536-dimensional vectors takes on average 1ms
+    #     accepted_reflection = {}
+    #     chat_embedding = OpenAIEmbedding()(input=chat_input)
+    #     top_3_of_description = []
+    #     top_3_of_content = []
+    #     for reflection_name, reflection_source in reflection.items():
+    #         reflection_res = params.get(reflection_name, None)
+    #         if reflection_res is None:
+    #             if "vector_database" in reflection_source:
+    #                 accepted_reflection[reflection_name] = self._get_vector_database(
+    #                     reflection_source["vector_database"], chat_embedding, **params)
+    #             continue
+    #         reflection_description_embedding = reflection_res.get('description_embedding', None)
+    #         reflection_content_embedding = reflection_res.get('content_embedding', None)
+    #         reflection_value = reflection_res.get('value', None)
+    #
+    #         description_similarity = similarity(chat_embedding, reflection_description_embedding)
+    #         content_similarity = similarity(chat_embedding, reflection_content_embedding)
+    #
+    #         self._maintain_top3(top_3_of_description, (description_similarity, reflection_name, reflection_value))
+    #         self._maintain_top3(top_3_of_content, (content_similarity, reflection_name, reflection_value))
+    #     for item in top_3_of_content:
+    #         accepted_reflection[item[1]] = item[2]
+    #     for item in top_3_of_description:
+    #         accepted_reflection[item[1]] = item[2]
+    #     reflection_str = '\n'.join([f'{value}' for value in accepted_reflection.values()])
+    #     return reflection_str
 
     def _get_vector_database(self, vdb_info, chat_embedding: List[float], **params) -> str:
         namespace = vdb_info.get('namespace', None)
@@ -261,15 +257,21 @@ class PromptLoader:
 
     def _process_datasource(self, **params) -> dict:
         data_map = {}
-        required_params: List[str] = self.tpl.get("input")
+        if 'input' not in params or 'datasource' not in params:
+            raise Exception(f"input or datasource not found in params")
+        required_params: List[str] = params.pop("input")
         for param in required_params:
             if param not in params:
                 raise Exception(f"param {param} not found")
+        datasource = params.pop("datasource", {})
+
         data_map.update(params)
         logger.debug(f"process datasource with params {params.keys()}")
-        self.datasource = self.tpl.get("datasource", {})
-        if "redis" in self.datasource:
-            for redis_key_tpl, redis_detail in self.datasource["redis"].items():
+        if "redis" in datasource:
+            for redis_detail in datasource["redis"]:
+                redis_key_tpl = redis_detail.get("key", None)
+                if not redis_key_tpl:
+                    raise Exception(f"redis key not found in datasource {datasource}")
                 redis_key = redis_key_tpl.format(**data_map)
                 # hash_key = '_'.join([redis_key, "hash"])
                 # hash_res = self.redis_client.get(hash_key)
@@ -281,7 +283,7 @@ class PromptLoader:
                     continue
 
                 redis_data = {}
-                if redis_detail["method"] == "hmget":
+                if redis_detail.get('method', None) == "hmget":
                     if redis_detail["keymap"] is None:
                         raise Exception(f"keymap not found in redis detail {redis_detail}")
                     keymap = redis_detail["keymap"]
@@ -322,14 +324,8 @@ class PromptLoader:
             raise Exception(f"vector database operator {operator} not support yet")
         return query_dict
 
-    def __init__(self, tpl_type: str):
-        self.tpl_type = tpl_type
-        if tpl_type == AI_type_emma or tpl_type == AI_type_passerby:
-            self.tpl = emma_config
-        elif tpl_type == AI_type_npc:
-            self.tpl = npc_config
-        elif tpl_type == AI_type_tina:
-            self.tpl = tina_config
+    def __init__(self):
+        self.tpl: Dict = {}
         self.redis_data: Dict[str, dict] = {}
         self.redis_hash_dict: Dict[str, str] = {}
         self._db_query_lock = threading.Lock()

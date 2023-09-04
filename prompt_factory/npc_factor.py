@@ -51,152 +51,107 @@ class NPCFactory:
     }
     """
 
-    def create_new_tmp_AI(self, typ: str, UID: str, gender: str, exclude_personality_ids: List[str]) -> str:
-        gender = gender.lower()
-        typ = typ.lower()
-        AID = ""
-        if typ == AI_type_emma:
-            AID = self._gen_emma(UID, gender, exclude_personality_ids)
-        elif typ == AI_type_tina:
-            AID = self._gen_tina(UID)
-        elif typ == AI_type_npc:
-            raise NotImplementedError
+    def create_new_AI(self, UID: str, TplName: str) -> str:
+        TplName = TplName.lower()
+        AID = self._gen(UID, TplName)
         return AID
 
-    def _gen_tina(self, UID: str):
-        AID = _generate_AID(UID)
-        ai_profile = {
-            "avatar_id": '1001',
-            "voice_id": '6mOAa1TR13l2vZnlyUEV',
-            "persona_id": '00000',
-            "persona": "{}",
-            "nickname": "Tina",
-            "type": AI_type_tina,
-            "UID": UID,
-            "AID": AID,
-            "gender": "female",
-            "MBTI": "INTJ",
-            "age": 25,
-        }
-        self.redis_client.hset(f"{RedisAIInstanceInfo}{AID}", ai_profile)
-        self.redis_client.expire(f"{RedisAIInstanceInfo}{AID}", 60 * 60 * 24 * 30)
-        return AID
+    # def _gen_tina(self, UID: str):
+    #     AID = _generate_AID(UID)
+    #     ai_profile = {
+    #         "avatar_id": '1001',
+    #         "voice_id": '6mOAa1TR13l2vZnlyUEV',
+    #         "persona_id": '00000',
+    #         "persona": "{}",
+    #         "nickname": "Tina",
+    #         "type": AI_type_tina,
+    #         "UID": UID,
+    #         "AID": AID,
+    #         "gender": "female",
+    #         "MBTI": "INTJ",
+    #         "age": 25,
+    #     }
+    #     self.redis_client.hset(f"{RedisAIInstanceInfo}{AID}", ai_profile)
+    #     self.redis_client.expire(f"{RedisAIInstanceInfo}{AID}", 60 * 60 * 24 * 30)
+    #     return AID
 
-    def _gen_emma(self, UID: str, gender: str, exclude_personality_ids: List[str]):
-        res = self.mongo_client.aggregate_from_collection("AI_personality", [
-            {"$match": {"type": AI_type_emma, "id": {"$nin": exclude_personality_ids}, "gender": gender}},
-            {"$sample": {"size": 1}}
-        ])
+    def _gen(self, UID: str, TplName: str):
+        res = self.mongo_client.find_one_from_collection("AI_role_template", {"tpl_name": TplName})
 
-        if len(res) == 0:
+        if not res:
             raise ValueError(f"No such AI personality: {AI_type_emma}")
+        meta_data = res.get('meta_data', None)
+        gender = res.get('gender', None)
+        nickname = res.get('nickname', None)
+        prompt_tpl = res.get('prompt_tpl', None)
 
-        avatar_res = self.mongo_client.aggregate_from_collection("AI_avatar_profile", [
-            {"$sample": {"size": 1}}
-        ])
-        if len(avatar_res) == 0:
-            raise ValueError(f"Cannot find avatar profile")
-        avatar = avatar_res[0]
+        if not meta_data or not gender or not prompt_tpl:
+            raise ValueError(f"Cannot find meta_data or gender or prompt_tpl of tpl {TplName}")
+        avatar_id = meta_data.get('avatar_id', None)
+        voice_id = meta_data.get('voice_id', None)
+        typ = meta_data.get('role_type', None)
+        if not typ or not avatar_id or not voice_id:
+            raise ValueError(f"Cannot find avatar_id or voice_id or type or of tpl metadata {TplName}")
 
-        voice_res = self.mongo_client.aggregate_from_collection("AI_voice_library", [
-            {"$match": {"gender": gender}},
-            {"$sample": {"size": 1}}
-        ])
-        if len(voice_res) == 0:
-            raise ValueError(f"Cannot find voice library")
-        voice = voice_res[0]
-        personality = res[0]
+        input_params = res.get('input', [])
+        datasource = res.get('datasource', {})
         ai_profile = {
-            "avatar_id": avatar['avatar_id'],
-            "voice_id": voice['voice_id'],
-            "persona_id": str(personality['_id']),
+            "avatar_id": avatar_id,
+            "voice_id": voice_id,
+            "tpl": json.dumps(res),
+            "gender": gender,
+            "nickname": nickname if nickname else _generate_random_name(gender=gender),
+            "type": typ,
+            "UID": UID,
+            "input": input_params,
+            "datasource": datasource,
+            "prompt_tpl": prompt_tpl,
         }
-        # if typ == AI_type_emma:
-        tpl_persona_dict = copy(emma_personality_dict)
-        ai_basic_info_list = copy(emma_basic_info)
-        # elif typ == AI_type_npc:
-        #     tpl_persona_dict = copy(npc_personality_dict)
-        #     ai_basic_info_list = copy(npc_basic_info)
-        # elif typ == AI_type_tina:
-        #     tpl_persona_dict = copy(tina_personality_dict)
-        #     ai_basic_info_list = copy(tina_basic_info)
-        ai_profile["persona"] = {}
-        no_use_list = []
-        with ThreadPoolExecutor(max_workers=20) as executor:
-            for k, v in personality.items():
-                executor.submit(self._match_prompt_tpl, tpl_persona_dict, k, v, ai_profile, ai_basic_info_list,
-                                no_use_list)
-
-        if len(no_use_list) > 0:
-            logger.warning("useless personality: %s", no_use_list)
-        if len(tpl_persona_dict) > 0:
-            logger.warning("missing personality: %s", tpl_persona_dict.keys())
-        ai_profile["nickname"] = _generate_random_name(gender=ai_profile["gender"])
-        ai_profile["type"] = AI_type_passerby
-        ai_profile["UID"] = UID
         AID = _generate_AID(UID)
         ai_profile["AID"] = AID
-        ai_profile["persona"] = json.dumps(ai_profile["persona"])
         self.redis_client.hset(f"{RedisAIInstanceInfo}{AID}", ai_profile)
         self.redis_client.expire(f"{RedisAIInstanceInfo}{AID}", 60 * 60 * 24 * 30)
+        self.mongo_client.create_one_document("AI_instance", ai_profile)
         return AID
 
-    def persist_AI(self, AID: str):
-        ai_profile = self.redis_client.hgetall(f"{RedisAIInstanceInfo}{AID}")
-        if not ai_profile:
-            raise ValueError(f"No such AI: {AID}")
-        decode_profile = {k.decode(): v.decode() for k, v in ai_profile.items()}
-        self.redis_client.hset(f"{RedisAIInstanceInfo}{AID}", {"type": AI_type_emma})
-        with Session(self.pg_instance) as session:
-            sql = insert(AIInstance).values(
-                id=decode_profile["AID"],
-                uid=decode_profile["UID"],
-                type=decode_profile["type"] if decode_profile['type'] != 'passerby' else 'emma',
-                nickname=decode_profile["nickname"],
-                gender=decode_profile["gender"],
-                mbti=decode_profile["MBTI"],
-                age=decode_profile["age"],
-                persona=decode_profile["persona"],
-                persona_id=decode_profile["persona_id"],
-                avatar_id=decode_profile["avatar_id"],
-                voice_id=decode_profile["voice_id"],
-            )
-            session.execute(sql)
-            session.commit()
+    # def persist_AI(self, AID: str):
+    #     ai_profile = self.redis_client.hgetall(f"{RedisAIInstanceInfo}{AID}")
+    #     if not ai_profile:
+    #         raise ValueError(f"No such AI: {AID}")
+    #     decode_profile = {k.decode('utf-8'): v.decode('utf-8') for k, v in ai_profile.items()}
+    # def _match_prompt_tpl(self, persona_dict, provide_key, provide_value, ai_profile, ai_basic_info_list, no_use_list):
+    #     if provide_key in persona_dict:
+    #         description = persona_dict[provide_key]
+    #         persona_dict.pop(provide_key)
+    #         val = {
+    #             # "description_embedding": self._get_embedding(input=description),
+    #             # "content_embedding": self._get_embedding(input=provide_value),
+    #             "description": description,
+    #             "value": provide_value,
+    #         }
+    #         ai_profile["persona"][provide_key] = val
+    #     elif provide_key in ai_basic_info_list:
+    #         ai_basic_info_list.remove(provide_key)
+    #         ai_profile[provide_key] = provide_value
+    #     else:
+    #         no_use_list.append(provide_key)
 
-    def _match_prompt_tpl(self, persona_dict, provide_key, provide_value, ai_profile, ai_basic_info_list, no_use_list):
-        if provide_key in persona_dict:
-            description = persona_dict[provide_key]
-            persona_dict.pop(provide_key)
-            val = {
-                # "description_embedding": self._get_embedding(input=description),
-                # "content_embedding": self._get_embedding(input=provide_value),
-                "description": description,
-                "value": provide_value,
-            }
-            ai_profile["persona"][provide_key] = val
-        elif provide_key in ai_basic_info_list:
-            ai_basic_info_list.remove(provide_key)
-            ai_profile[provide_key] = provide_value
-        else:
-            no_use_list.append(provide_key)
-
-    def _get_embedding(self, input: str):
-        md5 = hashlib.md5(input.encode('utf-8')).hexdigest()
-        key = f"embedding_of_{md5}"
-        embedding_str = self.redis_client.get(key)
-
-        # Caching as a string causes the floating point numbers in the word vectors to lose precision,
-        # leading to differences in the results of the comparison,
-        # with a similarity gap of about 0.00001, which is acceptable
-        if embedding_str is not None:
-            self.redis_client.expire(key, 60 * 60 * 24 * 30)
-            embedding = json.loads(embedding_str)
-            return embedding
-        embedding = self.embedding_client(input=input)
-        embedding_cache = json.dumps(embedding)
-        self.redis_client.setex(f"embedding_of_{md5}", embedding_cache, 60 * 60 * 24 * 30)
-        return embedding
+    # def _get_embedding(self, input: str):
+    #     md5 = hashlib.md5(input.encode('utf-8')).hexdigest()
+    #     key = f"embedding_of_{md5}"
+    #     embedding_str = self.redis_client.get(key)
+    #
+    #     # Caching as a string causes the floating point numbers in the word vectors to lose precision,
+    #     # leading to differences in the results of the comparison,
+    #     # with a similarity gap of about 0.00001, which is acceptable
+    #     if embedding_str is not None:
+    #         self.redis_client.expire(key, 60 * 60 * 24 * 30)
+    #         embedding = json.loads(embedding_str)
+    #         return embedding
+    #     embedding = self.embedding_client(input=input)
+    #     embedding_cache = json.dumps(embedding)
+    #     self.redis_client.setex(f"embedding_of_{md5}", embedding_cache, 60 * 60 * 24 * 30)
+    #     return embedding
 
     def __init__(self):
         self.redis_client: RedisClient = RedisClient()
