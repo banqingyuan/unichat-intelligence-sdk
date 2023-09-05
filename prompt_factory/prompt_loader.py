@@ -269,7 +269,7 @@ class PromptLoader:
         logger.debug(f"process datasource with params {params.keys()}")
         if "redis" in datasource:
             for redis_detail in datasource["redis"]:
-                redis_key_tpl = redis_detail.get("key", None)
+                redis_key_tpl = redis_detail.get("key_tpl", None)
                 if not redis_key_tpl:
                     raise Exception(f"redis key not found in datasource {datasource}")
                 redis_key = redis_key_tpl.format(**data_map)
