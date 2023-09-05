@@ -93,19 +93,19 @@ class NPCFactory:
         if not typ or not avatar_id or not voice_id:
             raise ValueError(f"Cannot find avatar_id or voice_id or type or of tpl metadata {TplName}")
 
+        res['_id'] = str(res['_id'])
         input_params = res.get('input', [])
         datasource = res.get('datasource', {})
         ai_profile = {
             "avatar_id": avatar_id,
             "voice_id": voice_id,
-            "tpl": json.dumps(res),
             "gender": gender,
             "nickname": nickname if nickname else _generate_random_name(gender=gender),
             "type": typ,
             "UID": UID,
-            "input": input_params,
-            "datasource": datasource,
-            "prompt_tpl": prompt_tpl,
+            "input": json.dumps(input_params),
+            "datasource": json.dumps(datasource),
+            "prompt_tpl": json.dumps(prompt_tpl),
         }
         AID = _generate_AID(UID)
         ai_profile["AID"] = AID
