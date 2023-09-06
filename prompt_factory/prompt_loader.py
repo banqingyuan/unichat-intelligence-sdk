@@ -112,7 +112,8 @@ class PromptLoader:
             try:
                 if fixed_tpl is not None:
                     variables_res = self._get_variables_results(tpl, **params)
-                    if condition := tpl.get('condition', None) is not None:
+                    condition = tpl.get('condition', None)
+                    if condition is not None:
                         condition_res = self._get_condition_results(condition, **params)
                         if condition_res:
                             fixed_res = fixed_tpl.format(**variables_res)
@@ -225,7 +226,8 @@ class PromptLoader:
                     variable_res[key] = params[key]
                     continue
                 else:
-                    if default_value := variable.get('default', None) is not None:
+                    default_value = variable.get('default', None)
+                    if default_value is not None:
                         variable_res[key] = default_value
                 # else:
                 # if 'db_source' not in variable:
@@ -336,7 +338,7 @@ class PromptLoader:
             raise Exception(f"vector database operator {operator} not support yet")
         return query_dict
 
-    def _get_condition_results(self, condition, param) -> bool:
+    def _get_condition_results(self, condition, **param) -> bool:
         if not all([key in condition_elements for key in condition.keys()]):
             raise Exception(f"condition {condition} not satisfied")
         if condition['operator'] == 'eq':
