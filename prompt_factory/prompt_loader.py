@@ -224,6 +224,9 @@ class PromptLoader:
                 if key in params:
                     variable_res[key] = params[key]
                     continue
+                else:
+                    if default_value := variable.get('default', None) is not None:
+                        variable_res[key] = default_value
                 # else:
                 # if 'db_source' not in variable:
                 #     raise Exception(f"variable {key} has no db_source and can not found in redis")
@@ -348,30 +351,33 @@ class PromptLoader:
                 return left_value == right_value
             else:
                 raise Exception(f'left_variable {left_value} or right_value {right_value} has no operation eq')
-        elif condition['operator'] == 'and':
-            left_variable = condition['left_variable']
-            if type(condition['left_variable']) == dict:
-                left_variable = self._get_condition_results(condition['left_variable'], **param)
-            left_value = param.get(left_variable, None)
-            if left_value is None:
-                raise Exception(f"left_value {left_variable} not found in param {param}")
-            right_value = condition['right_value']
-            if type(left_value) == bool and type(right_value) == bool:
-                return left_value & right_value
-            else:
-                raise Exception(f'left_variable {left_value} or right_value {right_value} has no operation and')
-        elif condition['operator'] == 'or':
-            left_variable = condition['left_variable']
-            if type(condition['left_variable']) == dict:
-                left_variable = self._get_condition_results(condition['left_variable'], **param)
-            left_value = param.get(left_variable, None)
-            if left_value is None:
-                raise Exception(f"left_value {left_variable} not found in param {param}")
-            right_value = condition['right_value']
-            if type(left_value) == bool and type(right_value) == bool:
-                return left_value | right_value
-            else:
-                raise Exception(f'left_variable {left_value} or right_value {right_value} has no operation or')
+        else:
+            logger.error('prompt condition only support eq yet')
+            return False
+        # elif condition['operator'] == 'and':
+        #     left_variable = condition['left_variable']
+        #     if type(condition['left_variable']) == dict:
+        #         left_variable = self._get_condition_results(condition['left_variable'], **param)
+        #     left_value = param.get(left_variable, None)
+        #     if left_value is None:
+        #         raise Exception(f"left_value {left_variable} not found in param {param}")
+        #     right_value = condition['right_value']
+        #     if type(left_value) == bool and type(right_value) == bool:
+        #         return left_value & right_value
+        #     else:
+        #         raise Exception(f'left_variable {left_value} or right_value {right_value} has no operation and')
+        # elif condition['operator'] == 'or':
+        #     left_variable = condition['left_variable']
+        #     if type(condition['left_variable']) == dict:
+        #         left_variable = self._get_condition_results(condition['left_variable'], **param)
+        #     left_value = param.get(left_variable, None)
+        #     if left_value is None:
+        #         raise Exception(f"left_value {left_variable} not found in param {param}")
+        #     right_value = condition['right_value']
+        #     if type(left_value) == bool and type(right_value) == bool:
+        #         return left_value | right_value
+        #     else:
+        #         raise Exception(f'left_variable {left_value} or right_value {right_value} has no operation or')
 
 
 
