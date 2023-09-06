@@ -117,6 +117,8 @@ class PromptLoader:
                         condition_res = self._get_condition_results(condition, **variables_res)
                         if condition_res:
                             fixed_res = fixed_tpl.format(**variables_res)
+                        else:
+                            return
                     fixed_res = fixed_tpl.format(**variables_res)
             except KeyError as e:
                 logger.warning(f"variable not found when try to format tpl :{fixed_tpl}. key: {e}")
