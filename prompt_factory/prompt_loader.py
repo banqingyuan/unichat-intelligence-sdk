@@ -30,6 +30,8 @@ logger = wrapper_azure_log_handler(
     )
 )
 
+condition_elements = ['left_variable', 'operator', 'right_value']
+
 
 class PromptLoader:
 
@@ -110,6 +112,10 @@ class PromptLoader:
             try:
                 if fixed_tpl is not None:
                     variables_res = self._get_variables_results(tpl, **params)
+                    if condition := tpl.get('condition', None) is not None:
+                        condition_res = self._get_condition_results(condition, **params)
+                        if condition_res:
+                            fixed_res = fixed_tpl.format(**variables_res)
                     fixed_res = fixed_tpl.format(**variables_res)
             except KeyError as e:
                 logger.warning(f"variable not found when try to format tpl :{fixed_tpl}. key: {e}")
@@ -291,6 +297,9 @@ class PromptLoader:
                         raise Exception(f"keymap should be a dict")
                     redis_res = self.redis_client.hmget(redis_key, keymap.keys())
                     for key, value in zip(keymap.keys(), redis_res):
+                        if value is None:
+                            logger.warning(f"failed to load redis_key {redis_key} cause redis key not found")
+                            continue
                         redis_data[keymap[key]] = value
                 else:
                     raise Exception(f"redis method {redis_detail['method']} not supported")
@@ -323,6 +332,49 @@ class PromptLoader:
         else:
             raise Exception(f"vector database operator {operator} not support yet")
         return query_dict
+
+    def _get_condition_results(self, condition, param) -> bool:
+        if not all([key in condition_elements for key in condition.keys()]):
+            raise Exception(f"condition {condition} not satisfied")
+        if condition['operator'] == 'eq':
+            left_variable = condition['left_variable']
+            if type(condition['left_variable']) == dict:
+                left_variable = self._get_condition_results(condition['left_variable'], **param)
+            left_value = param.get(left_variable, None)
+            if left_value is None:
+                raise Exception(f"left_value {left_variable} not found in param {param}")
+            right_value = condition['right_value']
+            if hasattr(left_value, '__eq__') and hasattr(right_value, '__eq__'):
+                return left_value == right_value
+            else:
+                raise Exception(f'left_variable {left_value} or right_value {right_value} has no operation eq')
+        elif condition['operator'] == 'and':
+            left_variable = condition['left_variable']
+            if type(condition['left_variable']) == dict:
+                left_variable = self._get_condition_results(condition['left_variable'], **param)
+            left_value = param.get(left_variable, None)
+            if left_value is None:
+                raise Exception(f"left_value {left_variable} not found in param {param}")
+            right_value = condition['right_value']
+            if type(left_value) == bool and type(right_value) == bool:
+                return left_value & right_value
+            else:
+                raise Exception(f'left_variable {left_value} or right_value {right_value} has no operation and')
+        elif condition['operator'] == 'or':
+            left_variable = condition['left_variable']
+            if type(condition['left_variable']) == dict:
+                left_variable = self._get_condition_results(condition['left_variable'], **param)
+            left_value = param.get(left_variable, None)
+            if left_value is None:
+                raise Exception(f"left_value {left_variable} not found in param {param}")
+            right_value = condition['right_value']
+            if type(left_value) == bool and type(right_value) == bool:
+                return left_value | right_value
+            else:
+                raise Exception(f'left_variable {left_value} or right_value {right_value} has no operation or')
+
+
+
 
     def __init__(self):
         self.tpl: Dict = {}
