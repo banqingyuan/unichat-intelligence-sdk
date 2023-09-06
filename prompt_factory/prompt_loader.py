@@ -114,7 +114,7 @@ class PromptLoader:
                     variables_res = self._get_variables_results(tpl, **params)
                     condition = tpl.get('condition', None)
                     if condition is not None:
-                        condition_res = self._get_condition_results(condition, **params)
+                        condition_res = self._get_condition_results(condition, **variables_res)
                         if condition_res:
                             fixed_res = fixed_tpl.format(**variables_res)
                     fixed_res = fixed_tpl.format(**variables_res)
@@ -347,7 +347,8 @@ class PromptLoader:
                 left_variable = self._get_condition_results(condition['left_variable'], **param)
             left_value = param.get(left_variable, None)
             if left_value is None:
-                raise Exception(f"left_value {left_variable} not found in param {param}")
+                logger.error(f"left_value {left_variable} not found in param {param}")
+                return False
             right_value = condition['right_value']
             if hasattr(left_value, '__eq__') and hasattr(right_value, '__eq__'):
                 return left_value == right_value
