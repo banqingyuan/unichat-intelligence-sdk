@@ -1,3 +1,4 @@
+import json
 import logging
 import queue
 import threading
@@ -303,6 +304,8 @@ class PromptLoader:
                     if type(keymap) is not dict:
                         raise Exception(f"keymap should be a dict")
                     redis_res = self.redis_client.hmget(redis_key, keymap.keys())
+                    # decode
+                    redis_res = [item.decode('utf-8') if item is not None else None for item in redis_res]
                     for key, value in zip(keymap.keys(), redis_res):
                         if value is None:
                             logger.warning(f"failed to load redis_key {redis_key} cause redis key not found")
