@@ -3,6 +3,7 @@ import random
 import threading
 import time
 
+from common_py.model.scene import SceneEvent
 from common_py.utils.logger import wrapper_std_output, wrapper_azure_log_handler
 
 logger = wrapper_azure_log_handler(
@@ -59,14 +60,14 @@ class AIActionStrategy:
         if not isinstance(self.trigger_actions, list):
             raise ValueError("trigger_actions must be list")
 
-    def eval(self, trigger_name: str, **factor_value):
+    def eval(self, trigger_event: SceneEvent, **factor_value):
         # 1. 检查trigger是否满足
         # 2. 检查condition是否满足
         if not self._check_effective():
             return self.eval_result_ignore
-        if not self._check_trigger(trigger_name):
+        if not self._check_trigger(trigger_event.event_name):
             return self.eval_result_ignore
-        if not self._check_condition():
+        if not self._check_condition(trigger_event=trigger_event, condition_script=self.conditions, **factor_value):
             return self.eval_result_ignore
         if not self._hit_possibility():
             return self.eval_result_ignore
@@ -98,12 +99,13 @@ class AIActionStrategy:
             return False
         return True
 
-    def _check_condition(self, condition_script: str = '', **factor_value):
+    def _check_condition(self, trigger_event: SceneEvent, condition_script: str = '', **factor_value):
         if not condition_script:
             return True
         input_params = {
-            **factor_value,
+            'trigger_event': trigger_event,
             'hit': False,
+            **factor_value,
         }
         try:
             eval(condition_script)

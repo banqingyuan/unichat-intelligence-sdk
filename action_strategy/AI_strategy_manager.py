@@ -3,6 +3,7 @@ from typing import List, Dict, Optional
 
 from common_py.client.azure_mongo import MongoDBClient
 from common_py.dto.ai_instance import AIBasicInformation
+from common_py.model.scene import SceneEvent
 
 from action_strategy.strategy import AIActionStrategy, build_strategy
 
@@ -55,8 +56,8 @@ class AIStrategyManager:
         #         trigger_action
         pass
 
-    def receive_event(self, trigger_event: str, **factor_value):
-        eval_strategy = self.strategy_trigger_map.get(trigger_event, [])
+    def receive_event(self, trigger_event: SceneEvent, **factor_value):
+        eval_strategy = self.strategy_trigger_map.get(trigger_event.event_name, [])
         executable_lst = []
 
         max_priority: Optional[int] = None  # 最高优先级，数值上最小的那个
@@ -72,5 +73,5 @@ class AIStrategyManager:
             if not s.execute_count():
                 self.effective_strategy.remove(s)
                 eval_strategy.remove(s)
-                self.strategy_trigger_map[trigger_event] = eval_strategy
+                self.strategy_trigger_map[trigger_event.event_name] = eval_strategy
                 # todo 上报给事件监听中心，取消trigger事件
