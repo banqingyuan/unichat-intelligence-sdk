@@ -64,11 +64,11 @@ class PromptLoader:
 
     def find_useful_LUI(self, inputs: List[str],
                         AI_info: AIBasicInformation,
-                        speaker_info: UserBasicInformation,
+                        speaker_id: str,
                         tracer: Tracer) -> Dict[str, bool]:
         with tracer.span(name="find_useful_LUI"):
             access_level = ['public']
-            if AI_info.UID == speaker_info.UID:
+            if AI_info.UID == speaker_id:
                 access_level.append('private')
             q = queue.Queue()
             lui_results = {}
