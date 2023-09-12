@@ -6,6 +6,8 @@ import time
 from common_py.model.scene import SceneEvent
 from common_py.utils.logger import wrapper_std_output, wrapper_azure_log_handler
 
+from action_strategy.action import Action
+
 logger = wrapper_azure_log_handler(
     wrapper_std_output(
         logging.getLogger(__name__)
@@ -38,7 +40,11 @@ class AIActionStrategy:
         # 策略生效的条件
         self.conditions = kwargs.get('conditions', None)
         # 满足条件后需要执行的动作
-        self.actions = kwargs.get('actions')
+        actions = []
+        action_list = kwargs.get('actions')
+        for action_dict in action_list:
+            actions.append(Action(**action_dict))
+        self.actions = actions
         # 触发动作，比如，用户开启AI, 用户加入房间
         self.trigger_actions = kwargs.get('trigger_actions', None)
         # 目标类型， AI/User
@@ -108,7 +114,7 @@ class AIActionStrategy:
             **factor_value,
         }
         try:
-            eval(condition_script)
+            eval(condition_script, input_params)
         except Exception as e:
             logger.exception(e)
             return False

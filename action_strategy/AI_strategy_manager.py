@@ -1,12 +1,18 @@
+import logging
 from queue import Queue
 from typing import List, Dict, Optional
 
 from common_py.client.azure_mongo import MongoDBClient
 from common_py.dto.ai_instance import AIBasicInformation
 from common_py.model.scene import SceneEvent
-
+from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
 from action_strategy.strategy import AIActionStrategy, build_strategy
 
+logger = wrapper_azure_log_handler(
+    wrapper_std_output(
+        logging.getLogger(__name__)
+    )
+)
 
 def build_action(action):
     pass
@@ -68,7 +74,8 @@ class AIStrategyManager:
         for s in executable_lst:
             if s.strategy_priority == max_priority:
                 for action in s.actions:
-                    # todo 校验action的有效性
+                    if action.action_script is not None:
+                        action.pre_loading(trigger_event, **factor_value)
                     self.action_queue.put(action)
             if not s.execute_count():
                 self.effective_strategy.remove(s)
