@@ -1,6 +1,3 @@
-from pydantic import BaseModel
-
-
 # type Condition struct {
 # 	// 条件ID
 # 	ConditionId int64 `json:"condition_id"`
@@ -17,22 +14,22 @@ from pydantic import BaseModel
 # }
 
 
-class Condition:
-    # todo 补充运算校验，添加因子加载, 运算执行逻辑
-
-    def __init__(self, **data):
-        self.condition_id = data.get("condition_id", None)
-        self.start_time = data.get("start_time", None)
-        self.operator = data.get("operator", None)
-        if self.start_time is None or self.condition_id is None or self.operator is None:
-            raise ValueError("start_time or condition_id is None")
-        
-        self.condition_type = data.get("condition_type", "binary")
-        if self.condition_type == "unary":
-            self._check_valid_operator()
-        self.end_time = data.get("end_time", None)
-        self.factors = data.get("factors", None)
-
-    def _check_valid_operator(self):
-        if self.operator not in ["eq", "ne", "gt", "lt", "ge", "le", "ta"]:
-            raise ValueError(f"invalid operator: {self.operator}")
+# class Condition:
+#     # todo 补充运算校验，添加因子加载, 运算执行逻辑
+#
+#     def __init__(self, **data):
+#         self.condition_id = data.get("condition_id", None)
+#         self.start_time = data.get("start_time", None)
+#         self.operator = data.get("operator", None)
+#         if self.start_time is None or self.condition_id is None or self.operator is None:
+#             raise ValueError("start_time or condition_id is None")
+#
+#         self.condition_type = data.get("condition_type", "binary")
+#         if self.condition_type == "unary":
+#             self._check_valid_operator()
+#         self.end_time = data.get("end_time", None)
+#         self.factors = data.get("factors", None)
+#
+#     def _check_valid_operator(self):
+#         if self.operator not in ["eq", "ne", "gt", "lt", "ge", "le", "ta"]:
+#             raise ValueError(f"invalid operator: {self.operator}")

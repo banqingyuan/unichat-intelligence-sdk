@@ -1,6 +1,15 @@
+import logging
 import random
 import threading
 import time
+
+from common_py.utils.logger import wrapper_std_output, wrapper_azure_log_handler
+
+logger = wrapper_azure_log_handler(
+    wrapper_std_output(
+        logging.getLogger(__name__)
+    )
+)
 
 
 class AIActionStrategy:
@@ -10,23 +19,25 @@ class AIActionStrategy:
 
     def __init__(self, **kwargs):
         # 策略ID
-        self.strategy_id = kwargs.get('strategy_id', None)
+        self.strategy_id = kwargs.get('strategy_id')
         # 策略名称
-        self.strategy_name = kwargs.get('strategy_name', None)
+        self.strategy_name = kwargs.get('strategy_name')
         # 策略优先级，同时命中的情况下，优先级高的生效 (0-500) 越小优先级越高
-        self.strategy_priority = kwargs.get('strategy_priority', None)
+        self.strategy_priority = kwargs.get('strategy_priority')
         # 策略生效时间
-        self.start_time = kwargs.get('start_time', None)
+        self.start_time = kwargs.get('start_time')
         # 策略失效时间
-        self.end_time = kwargs.get('end_time', None)
-        # 策略在每个AI的生效次数 once/everyTime
-        self.frequency = kwargs.get('frequency', None)
+        self.end_time = kwargs.get('end_time')
+        # 策略在每个AI的生效次数 once/everyTime 暂不支持
+        # self.frequency = kwargs.get('frequency', None)
         # 策略在每个AI实例的生效次数 int default 1, -1 means unlimited
-        self.instance_frequency = kwargs.get('instance_frequency', 1)
+        self._instance_frequency = kwargs.get('instance_frequency', 1)
         # 策略执行的概率(1, 100)
         self.possibility = kwargs.get('possibility', 100)
+        # 策略生效的条件
+        self.conditions = kwargs.get('conditions', None)
         # 满足条件后需要执行的动作
-        self.actions = kwargs.get('actions', None)
+        self.actions = kwargs.get('actions')
         # 触发动作，比如，用户开启AI, 用户加入房间
         self.trigger_actions = kwargs.get('trigger_actions', None)
         # 目标类型， AI/User
@@ -48,7 +59,7 @@ class AIActionStrategy:
         if not isinstance(self.trigger_actions, list):
             raise ValueError("trigger_actions must be list")
 
-    def eval(self, trigger_name: str):
+    def eval(self, trigger_name: str, **factor_value):
         # 1. 检查trigger是否满足
         # 2. 检查condition是否满足
         if not self._check_effective():
@@ -64,10 +75,10 @@ class AIActionStrategy:
     def execute_count(self):
         try:
             self.thread_lock.acquire()
-            if self.instance_frequency > 0:
-                self.instance_frequency -= 1
+            if self._instance_frequency > 0:
+                self._instance_frequency -= 1
                 return True
-            if self.instance_frequency == -1:
+            if self._instance_frequency == -1:
                 return True
             return False
         finally:
@@ -83,12 +94,23 @@ class AIActionStrategy:
     def _check_effective(self):
         if time.time() < self.start_time or time.time() > self.end_time:
             return False
-        if self.instance_frequency == 0:
+        if self._instance_frequency == 0:
             return False
         return True
 
-    def _check_condition(self):
-        return True
+    def _check_condition(self, condition_script: str = '', **factor_value):
+        if not condition_script:
+            return True
+        input_params = {
+            **factor_value,
+            'hit': False,
+        }
+        try:
+            eval(condition_script)
+        except Exception as e:
+            logger.exception(e)
+            return False
+        return input_params['hit']
 
     def _hit_possibility(self):
         if self.possibility == 100:
@@ -101,3 +123,17 @@ def build_strategy(strategy) -> AIActionStrategy:
     return AIActionStrategy(**params)
 
 
+if __name__ == '__main__':
+
+    def check_condition(condition_script: str = '', **factor_value):
+        if not condition_script:
+            return True
+        input_params = {
+            **factor_value,
+            'hit': False,
+        }
+        exec(condition_script, input_params)
+        return input_params['hit']
+
+    result = check_condition("if factor1  10: hit = True", factor1=15)
+    print(result)  # 输出: True

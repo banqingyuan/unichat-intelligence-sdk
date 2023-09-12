@@ -7,12 +7,15 @@ from typing import List
 from common_py.client.embedding import OpenAIEmbedding
 from common_py.client.pg import update_by_id, query_vector_info, PgEngine, batch_insert_vector
 from common_py.dto.unicaht_knowledge import UnichatKnowledge, UnichatKnowledgeInfo, load_all_knowledge
-from common_py.utils.logger import wrapper_std_output
+from common_py.utils.logger import wrapper_std_output, wrapper_azure_log_handler
 
 split_code = '*****'
 
-logger = wrapper_std_output(logging.getLogger(__name__))
-
+logger = wrapper_azure_log_handler(
+    wrapper_std_output(
+        logging.getLogger(__name__)
+    )
+)
 
 class KnowledgeLoader:
 

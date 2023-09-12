@@ -57,18 +57,19 @@ class AIStrategyManager:
         #         trigger_action
         pass
 
-    def receive_event(self, trigger_event: str):
+    def receive_event(self, trigger_event: str, **factor_value):
         eval_strategy = self.strategy_trigger_map.get(trigger_event, [])
         executable_lst = []
 
         max_priority: Optional[int] = None  # 最高优先级，数值上最小的那个
         for strategy in eval_strategy:
-            if strategy.eval(trigger_event):
+            if strategy.eval(trigger_event, **factor_value):
                 executable_lst.append(strategy)
                 max_priority = strategy.strategy_priority if max_priority is None or strategy.strategy_priority < max_priority else max_priority
         for s in executable_lst:
             if s.strategy_priority == max_priority:
                 for action in s.actions:
+                    # todo 校验action的有效性
                     self.action_queue.put(action)
             if not s.execute_count():
                 self.effective_strategy.remove(s)
