@@ -18,6 +18,7 @@ logger = wrapper_azure_log_handler(
 
 class Action(BaseModel):
     # todo 校验action的有效性
+    # todo 有效action可枚举，登记使用方法
 
     action_name: str
     queuing_time: int = 0
