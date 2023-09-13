@@ -14,6 +14,7 @@ logger = wrapper_azure_log_handler(
     )
 )
 
+
 def build_action(action):
     pass
 
@@ -37,15 +38,14 @@ class AIStrategyManager:
         strategies = self.mongodb_client.find_from_collection("ai_action_strategy", filter={
             "$or": [
                 {
-                    "target_detail.all": True
+                    "target.type": "AI",
+                    "target.AI_type": self.ai_info.type,
                 },
                 {
-                    "target_type": "AI",
-                    # "target_detail.role": "$role",
-                    # "target_detail.close_level": "$provided_close_level"
-                    # todo 补充筛选条件，现在暂不满足
+                    "target.tpl_name": self.ai_info.tpl_name
                 }
             ]
+            # todo 补充筛选条件，现在暂不满足
         })
         for strategy in strategies:
             if s := build_strategy(strategy) is not None:

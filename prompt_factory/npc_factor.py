@@ -75,8 +75,8 @@ class NPCFactory:
     #     self.redis_client.expire(f"{RedisAIInstanceInfo}{AID}", 60 * 60 * 24 * 30)
     #     return AID
 
-    def _gen(self, UID: str, TplName: str):
-        res = self.mongo_client.find_one_from_collection("AI_role_template", {"tpl_name": TplName})
+    def _gen(self, UID: str, tpl_name: str):
+        res = self.mongo_client.find_one_from_collection("AI_role_template", {"tpl_name": tpl_name})
 
         if not res:
             raise ValueError(f"No such AI personality: {AI_type_emma}")
@@ -86,12 +86,12 @@ class NPCFactory:
         prompt_tpl = res.get('prompt_tpl', None)
 
         if not meta_data or not gender or not prompt_tpl:
-            raise ValueError(f"Cannot find meta_data or gender or prompt_tpl of tpl {TplName}")
+            raise ValueError(f"Cannot find meta_data or gender or prompt_tpl of tpl {tpl_name}")
         avatar_id = meta_data.get('avatar_id', None)
         voice_id = meta_data.get('voice_id', None)
         typ = meta_data.get('role_type', None)
         if not typ or not avatar_id or not voice_id:
-            raise ValueError(f"Cannot find avatar_id or voice_id or type or of tpl metadata {TplName}")
+            raise ValueError(f"Cannot find avatar_id or voice_id or type or of tpl metadata {tpl_name}")
 
         res['_id'] = str(res['_id'])
         input_params = res.get('input', [])
@@ -106,6 +106,7 @@ class NPCFactory:
             "input": json.dumps(input_params),
             "datasource": json.dumps(datasource),
             "prompt_tpl": json.dumps(prompt_tpl),
+            "tpl_name": tpl_name,
         }
         AID = _generate_AID(UID)
         ai_profile["AID"] = AID
