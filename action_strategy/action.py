@@ -4,6 +4,8 @@ from typing import Any, Dict
 
 from common_py.model.scene import SceneEvent
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
+from memory_sdk.hippocampus import Hippocampus
+from opencensus.trace import execution_context
 from pydantic import BaseModel
 
 Action_AI_Talking = 'AI_talking'
@@ -37,12 +39,13 @@ class Action(BaseModel):
     active_time: int = 0
     sharing_params: Dict = {}
 
-    def pre_loading(self, event: SceneEvent, **factor_value) -> bool:
+    def pre_loading(self, trigger_event: SceneEvent, **factor_value) -> bool:
         if not self.action_script or self.action_script == '':
             return False
         input_params = {
-            'trigger_event': event,
+            'trigger_event': trigger_event,
             'sharing_params': self.sharing_params,
+            'tracer': execution_context.get_opencensus_tracer(),
             **factor_value,
         }
         try:

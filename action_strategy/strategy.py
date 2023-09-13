@@ -5,6 +5,7 @@ import time
 
 from common_py.model.scene import SceneEvent
 from common_py.utils.logger import wrapper_std_output, wrapper_azure_log_handler
+from memory_sdk.hippocampus import Hippocampus
 
 from action_strategy.action import Action
 
@@ -26,17 +27,17 @@ class AIActionStrategy:
         # 策略名称
         self.strategy_name = kwargs.get('strategy_name')
         # 策略优先级，同时命中的情况下，优先级高的生效 (0-500) 越小优先级越高
-        self.strategy_priority = kwargs.get('strategy_priority')
+        self.strategy_priority = int(kwargs.get('strategy_priority'))
         # 策略生效时间
-        self.start_time = kwargs.get('start_time')
+        self.start_time = int(kwargs.get('start_time'))
         # 策略失效时间
-        self.end_time = kwargs.get('end_time')
+        self.end_time = int(kwargs.get('end_time'))
         # 策略在每个AI的生效次数 once/everyTime 暂不支持
         # self.frequency = kwargs.get('frequency', None)
         # 策略在每个AI实例的生效次数 int default 1, -1 means unlimited
-        self._instance_frequency = kwargs.get('instance_frequency', 1)
+        self._instance_frequency = int(kwargs.get('instance_frequency', 1))
         # 策略执行的概率(1, 100)
-        self.possibility = kwargs.get('possibility', 100)
+        self.possibility = int(kwargs.get('possibility', 100))
         # 策略生效的条件
         self.conditions = kwargs.get('conditions', None)
         # 满足条件后需要执行的动作
