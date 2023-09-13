@@ -49,9 +49,7 @@ class AIActionStrategy:
         # 触发动作，比如，用户开启AI, 用户加入房间
         self.trigger_actions = kwargs.get('trigger_actions', None)
         # 目标类型， AI/User
-        self.target_type = kwargs.get('target_type', None)
-        # 进一步细化生效目标
-        self.target_detail = kwargs.get('target_detail', None)
+        self.target = kwargs.get('target_type', {})
         self.thread_lock = threading.Lock()
 
         self._check_valid()
