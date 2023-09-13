@@ -60,7 +60,7 @@ class AIActionStrategy:
                 raise ValueError(f"invalid {key}")
         if not isinstance(self.actions, list):
             raise ValueError("actions must be list")
-        if not isinstance(self.target_detail, list):
+        if not isinstance(self.target, dict):
             raise ValueError("target_detail must be list")
         if not isinstance(self.trigger_actions, list):
             raise ValueError("trigger_actions must be list")
