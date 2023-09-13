@@ -35,7 +35,7 @@ class AIStrategyManager:
         self.strategy_trigger_map: Dict[str, List[AIActionStrategy]] = {}
 
     def load(self):
-        strategies = self.mongodb_client.find_from_collection("ai_action_strategy", filter={
+        strategies = self.mongodb_client.find_from_collection("AI_action_strategy", filter={
             "$or": [
                 {
                     "target.type": "AI",
