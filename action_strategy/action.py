@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import Any, Dict
 
 from common_py.model.scene import SceneEvent
@@ -27,13 +28,14 @@ class Action(BaseModel):
     """
 
     action_name: str
+    action_script: str
     queuing_time: int = 0
-    action_script: str = None
+    active_time: int = 0
     sharing_params: Dict = {}
 
-    def pre_loading(self, event: SceneEvent, **factor_value):
+    def pre_loading(self, event: SceneEvent, **factor_value) -> bool:
         if not self.action_script or self.action_script == '':
-            return
+            return False
         input_params = {
             'trigger_event': event,
             'sharing_params': self.sharing_params,
@@ -44,4 +46,5 @@ class Action(BaseModel):
         except Exception as e:
             logger.exception(e)
             return False
-        self.execute_result = input_params.get('execute_result', None)
+        self.active_time = int(time.time())
+        return True

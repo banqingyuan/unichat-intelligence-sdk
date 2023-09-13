@@ -74,9 +74,8 @@ class AIStrategyManager:
         for s in executable_lst:
             if s.strategy_priority == max_priority:
                 for action in s.actions:
-                    if action.action_script is not None:
-                        action.pre_loading(trigger_event, **factor_value)
-                    self.action_queue.put(action)
+                    if action.pre_loading(trigger_event, **factor_value):
+                        self.action_queue.put(action)
             if not s.execute_count():
                 self.effective_strategy.remove(s)
                 eval_strategy.remove(s)
