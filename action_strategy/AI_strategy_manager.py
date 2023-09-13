@@ -48,7 +48,8 @@ class AIStrategyManager:
             # todo 补充筛选条件，现在暂不满足
         })
         for strategy in strategies:
-            if s := build_strategy(strategy) is not None:
+            s = build_strategy(strategy)
+            if s is not None:
                 self.effective_strategy.append(s)
         for s in self.effective_strategy:
             for trigger in s.trigger_actions:
