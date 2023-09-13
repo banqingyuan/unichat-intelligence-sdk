@@ -107,6 +107,7 @@ class PromptLoader:
             logger.exception(e)
 
     def _get_prompt_block(self, idx: int, tpl: dict, chat_input: str, q: queue.Queue, **params):
+        # todo 注意一下chat_input为空的处理
         try:
             fixed_tpl = tpl.get("tpl", None)
             fixed_res = ""
