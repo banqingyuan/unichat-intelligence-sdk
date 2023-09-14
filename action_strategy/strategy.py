@@ -117,7 +117,7 @@ class AIActionStrategy:
             **factor_value,
         }
         try:
-            eval(condition_script, input_params)
+            exec(condition_script, input_params)
         except Exception as e:
             logger.exception(e)
             return False

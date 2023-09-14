@@ -49,7 +49,7 @@ class Action(BaseModel):
             **factor_value,
         }
         try:
-            eval(self.action_script, input_params)
+            exec(self.action_script, input_params)
         except Exception as e:
             logger.exception(e)
             return False
