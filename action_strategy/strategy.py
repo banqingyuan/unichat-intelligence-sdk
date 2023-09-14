@@ -68,15 +68,19 @@ class AIActionStrategy:
     def eval(self, trigger_event: SceneEvent, **factor_value):
         # 1. 检查trigger是否满足
         # 2. 检查condition是否满足
-        if not self._check_effective():
+        try:
+            if not self._check_effective():
+                return self.eval_result_ignore
+            if not self._check_trigger(trigger_event.event_name):
+                return self.eval_result_ignore
+            if not self._check_condition(trigger_event=trigger_event, condition_script=self.conditions, **factor_value):
+                return self.eval_result_ignore
+            if not self._hit_possibility():
+                return self.eval_result_ignore
+            return self.eval_result_execute
+        except Exception as e:
+            logger.exception(e)
             return self.eval_result_ignore
-        if not self._check_trigger(trigger_event.event_name):
-            return self.eval_result_ignore
-        if not self._check_condition(trigger_event=trigger_event, condition_script=self.conditions, **factor_value):
-            return self.eval_result_ignore
-        if not self._hit_possibility():
-            return self.eval_result_ignore
-        return self.eval_result_execute
 
     def execute_count(self):
         try:
@@ -92,7 +96,7 @@ class AIActionStrategy:
 
     def _check_trigger(self, trigger_name: str):
         valid = False
-        for trigger in [trigger for trigger in self.trigger_actions if trigger.name == trigger_name]:
+        for trigger in [trigger for trigger in self.trigger_actions if trigger['name'] == trigger_name]:
             if trigger.get("type") == 'immediately':
                 return True
         return valid
