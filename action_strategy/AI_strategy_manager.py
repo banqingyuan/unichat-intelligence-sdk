@@ -69,7 +69,7 @@ class AIStrategyManager:
 
         max_priority: Optional[int] = None  # 最高优先级，数值上最小的那个
         for strategy in eval_strategy:
-            if strategy.eval(trigger_event, **factor_value):
+            if strategy.eval(trigger_event, **factor_value) == AIActionStrategy.eval_result_execute:
                 executable_lst.append(strategy)
                 max_priority = strategy.strategy_priority if max_priority is None or strategy.strategy_priority < max_priority else max_priority
         for s in executable_lst:
