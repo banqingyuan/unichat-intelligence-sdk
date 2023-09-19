@@ -110,6 +110,9 @@ class NPCFactory:
         return AID
 
     def _refresh_AI_tpl(self, tpl_name: str, version: str, *fields):
+        """
+        缺失回滚手段
+        """
         tpl_res = self.mongo_client.find_one_from_collection("AI_role_template", {"tpl_name": tpl_name})
         if not tpl_res:
             raise ValueError(f"Can not find tpl: {tpl_name}")
@@ -135,6 +138,9 @@ class NPCFactory:
             if not new_prompt_tpl:
                 raise ValueError(f"Can not find prompt_tpl in tpl: {tpl_name}")
             update_fields['prompt_tpl'] = json.dumps(new_prompt_tpl)
+
+        if len(update_fields) == 0:
+            raise ValueError('input update_fields can not be empty')
         update_fields['version'] = version
 
         mongo_filter = {

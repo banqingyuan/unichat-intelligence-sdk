@@ -147,8 +147,6 @@ class IntimacyMgr:
         self.redis_client.hset(intimacy_point_redis_key, AI_memory_intimacy_level, request_level)
 
 
-
-
 def _assemble_key(intimacy_ticket: IntimacyBase) -> str:
     return f'{intimacy_ticket.source_id} intimacy towards {intimacy_ticket.target_id}'
 
