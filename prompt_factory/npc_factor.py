@@ -48,7 +48,7 @@ class NPCFactory:
         return AID
 
     def update_tpl_to_instance(self, tpl_name: str, latest_version: str, *fields):
-        self._refresh_AI_tpl(tpl_name=tpl_name, version=latest_version, *fields)
+        self._refresh_AI_tpl(tpl_name, latest_version, *fields)
 
     # def _gen_tina(self, UID: str):
     #     AID = _generate_AID(UID)
@@ -151,36 +151,33 @@ class NPCFactory:
             ]
         }
 
-        BATCH_SIZE = 10000
-        cursor = self.mongo_client.find_from_collection("AI_instance", filter=mongo_filter,
+        docs = self.mongo_client.find_from_collection("AI_instance", filter=mongo_filter,
                                                         projection={"_id": 1, "AID": 1})
 
-        while True:
-            batch_ids = []
-            batch_AIDS = []
-            for doc in cursor.limit(BATCH_SIZE):
-                batch_ids.append(doc['_id'])
-                batch_AIDS.append(doc['AID'])
+        if len(docs) == 0:
+            return
+        batch_ids = []
+        batch_AIDS = []
+        for doc in docs:
+            batch_ids.append(doc['_id'])
+            batch_AIDS.append(doc['AID'])
 
-            if not batch_ids:
-                break
+        mongo_result = self.mongo_client.update_many_document(
+            "AI_instance",
+            filter={"_id": {"$in": batch_ids}},
+            update={'$set': update_fields}
+        )
+        logger.debug(f"update many document result {mongo_result}")
 
-            mongo_result = self.mongo_client.update_many_document(
-                "AI_instance",
-                filter={"_id": {"$in": batch_ids}},
-                update={'$set': update_fields}
-            )
-            logger.debug(f"update many document result {mongo_result}")
+        # 创建一个pipeline对象
+        pipeline = self.redis_client.pipeline()
 
-            # 创建一个pipeline对象
-            pipeline = self.redis_client.pipeline()
+        # 在pipeline中为每个AID执行hset操作
+        for AID in batch_AIDS:
+            pipeline.hset(RedisAIInstanceInfo.format(AID=AID), **update_fields)
 
-            # 在pipeline中为每个AID执行hset操作
-            for AID in batch_AIDS:
-                pipeline.hset(RedisAIInstanceInfo.format(AID=AID), **update_fields)
-
-            # 批量执行所有命令
-            pipeline.execute()
+        # 批量执行所有命令
+        pipeline.execute()
 
     # def persist_AI(self, AID: str):
     #     ai_profile = self.redis_client.hgetall(f"{RedisAIInstanceInfo}{AID}")
