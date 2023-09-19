@@ -12,6 +12,14 @@ logger = wrapper_azure_log_handler(
     )
 )
 
+AI_memory_intimacy_point = "intimacy_point"
+AI_memory_intimacy_level = "intimacy_level"
+AI_memory_met_times = "met_times"
+AI_memory_last_met_timestamp = "last_met_timestamp"
+AI_memory_topic_mentioned_last_time = "topic_mentioned_last_time"
+AI_memory_time_since_last_met_description = "time_since_last_met_description"
+AI_memory_time_duration_since_last_met = "time_duration_since_last_met"
+
 
 class UserMemoryEntity:
     """
@@ -22,7 +30,6 @@ class UserMemoryEntity:
 
     # todo 是否在这里记录上次聊天的话题
     """
-    keys_of_user_memory = ['met_times', 'last_met_timestamp', 'topic_mentioned_last_time', 'time_since_last_met_description', 'time_duration_since_last_met']
 
     def __init__(self, AID: str, UID: str, redis_client: RedisClient):
         self.redis_client = redis_client
@@ -41,43 +48,43 @@ class UserMemoryEntity:
         self.load_memory()
 
     def load_memory(self):
-        result = self.redis_client.hgetall(f"{RedisAIMemoryInfo}{self.AID}:{self.UID}")
+        result = self.redis_client.hgetall(RedisAIMemoryInfo.format(AID=self.AID, UID=self.UID))
         if result is None:
             logger.warning(f"AIInstanceInfo with id {self.AID} not found")
             return
         result = {k.decode(): v.decode() for k, v in result.items()}
 
-        self.met_times = int(result.get('met_times', 0))
+        self.met_times = int(result.get(AI_memory_met_times, 0))
 
-        self.last_met_timestamp = int(result.get('last_met_timestamp', 0))
+        self.last_met_timestamp = int(result.get(AI_memory_last_met_timestamp, 0))
         if self.last_met_timestamp > 0:
             self.time_duration_since_last_met = int(time.time()) - self.last_met_timestamp
             self.time_since_last_met_description = seconds_to_english_readable(self.time_duration_since_last_met)
 
-        self.topic_mentioned_last_time = result.get('topic_mentioned_last_time', None)
+        self.topic_mentioned_last_time = result.get(AI_memory_topic_mentioned_last_time, None)
 
         # 每次加载时重置topic_mentioned_last_time,
         # because this time is the last time of next time
-        self.element_stash('topic_mentioned_last_time', '')
+        self.element_stash(AI_memory_topic_mentioned_last_time, '')
 
     def element_stash(self, key: str, value: str):
         self.current_stash[key] = value
 
     def get_dict(self):
         return {
-            'met_times': self.met_times,
-            'last_met_timestamp': self.last_met_timestamp,
-            'time_since_last_met_description': self.time_since_last_met_description,
-            'time_duration_since_last_met': self.time_duration_since_last_met,
-            'topic_mentioned_last_time': self.topic_mentioned_last_time,
+            AI_memory_met_times: self.met_times,
+            AI_memory_last_met_timestamp: self.last_met_timestamp,
+            AI_memory_time_since_last_met_description: self.time_since_last_met_description,
+            AI_memory_time_duration_since_last_met: self.time_duration_since_last_met,
+            AI_memory_topic_mentioned_last_time: self.topic_mentioned_last_time,
         }
 
     def on_destroy(self):
         self.met_times += 1
         self.last_met_timestamp = int(time.time())
         refresh_keys = {
-            'met_times': self.met_times,
-            'last_met_timestamp': self.last_met_timestamp,
+            AI_memory_met_times: self.met_times,
+            AI_memory_last_met_timestamp: self.last_met_timestamp,
             **self.current_stash
         }
-        self.redis_client.hset(f"{RedisAIMemoryInfo}{self.AID}:{self.UID}", refresh_keys)
+        self.redis_client.hset(RedisAIMemoryInfo.format(AID=self.AID, UID=self.UID), refresh_keys)

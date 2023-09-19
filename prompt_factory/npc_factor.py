@@ -47,6 +47,9 @@ class NPCFactory:
         AID = self._gen(UID, TplName)
         return AID
 
+    def update_tpl_to_instance(self, tpl_name: str, latest_version: str, *fields):
+        self._refresh_AI_tpl(tpl_name=tpl_name, version=latest_version, *fields)
+
     # def _gen_tina(self, UID: str):
     #     AID = _generate_AID(UID)
     #     ai_profile = {
@@ -105,6 +108,73 @@ class NPCFactory:
         self.redis_client.expire(f"{RedisAIInstanceInfo}{AID}", 60 * 60 * 24 * 30)
         self.mongo_client.create_one_document("AI_instance", ai_profile)
         return AID
+
+    def _refresh_AI_tpl(self, tpl_name: str, version: str, *fields):
+        tpl_res = self.mongo_client.find_one_from_collection("AI_role_template", {"tpl_name": tpl_name})
+        if not tpl_res:
+            raise ValueError(f"Can not find tpl: {tpl_name}")
+
+        update_fields = {}
+        if 'voice_id' in fields:
+            new_voice_id = tpl_res.get('meta_data', {}).get('voice_id', None)
+            if not new_voice_id:
+                raise ValueError(f"Can not find voice_id in tpl: {tpl_name}")
+            update_fields['voice_id'] = new_voice_id
+        if 'input' in fields:
+            new_input = tpl_res.get('input', None)
+            if not new_input:
+                raise ValueError(f"Can not find input in tpl: {tpl_name}")
+            update_fields['input'] = json.dumps(new_input)
+        if 'datasource' in fields:
+            new_datasource = tpl_res.get('datasource', None)
+            if not new_datasource:
+                raise ValueError(f"Can not find datasource in tpl: {tpl_name}")
+            update_fields['datasource'] = json.dumps(new_datasource)
+        if 'prompt_tpl' in fields:
+            new_prompt_tpl = tpl_res.get('prompt_tpl', None)
+            if not new_prompt_tpl:
+                raise ValueError(f"Can not find prompt_tpl in tpl: {tpl_name}")
+            update_fields['prompt_tpl'] = json.dumps(new_prompt_tpl)
+        update_fields['version'] = version
+
+        mongo_filter = {
+            "tpl_name": tpl_name,
+            "$or": [
+                {"version": {"$ne": version}},
+                {"version": {"$exists": False}}
+            ]
+        }
+
+        BATCH_SIZE = 10000
+        cursor = self.mongo_client.find_from_collection("AI_instance", filter=mongo_filter,
+                                                        projection={"_id": 1, "AID": 1})
+
+        while True:
+            batch_ids = []
+            batch_AIDS = []
+            for doc in cursor.limit(BATCH_SIZE):
+                batch_ids.append(doc['_id'])
+                batch_AIDS.append(doc['AID'])
+
+            if not batch_ids:
+                break
+
+            mongo_result = self.mongo_client.update_many_document(
+                "AI_instance",
+                filter={"_id": {"$in": batch_ids}},
+                update={'$set': update_fields}
+            )
+            logger.debug(f"update many document result {mongo_result}")
+
+            # 创建一个pipeline对象
+            pipeline = self.redis_client.pipeline()
+
+            # 在pipeline中为每个AID执行hset操作
+            for AID in batch_AIDS:
+                pipeline.hset(RedisAIInstanceInfo.format(AID=AID), **update_fields)
+
+            # 批量执行所有命令
+            pipeline.execute()
 
     # def persist_AI(self, AID: str):
     #     ai_profile = self.redis_client.hgetall(f"{RedisAIInstanceInfo}{AID}")
