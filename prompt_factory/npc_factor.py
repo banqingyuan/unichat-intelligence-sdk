@@ -174,7 +174,7 @@ class NPCFactory:
 
         # 在pipeline中为每个AID执行hset操作
         for AID in batch_AIDS:
-            pipeline.hset(RedisAIInstanceInfo.format(AID=AID), **update_fields)
+            pipeline.hset(RedisAIInstanceInfo.format(AID=AID), mapping=update_fields)
 
         # 批量执行所有命令
         pipeline.execute()
