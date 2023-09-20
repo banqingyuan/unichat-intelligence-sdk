@@ -131,12 +131,23 @@ class IntimacyMgr:
             add_value = sum([ticket.add_value for ticket in intimacy_ticket_list])
 
             intimacy_point_redis_key = RedisAIMemoryInfo.format(AID=source_id, UID=target_id)
-            intimacy_point = self.redis_client.hget(intimacy_point_redis_key, AI_memory_intimacy_point)
-            intimacy_point = int(intimacy_point) if intimacy_point else 0
-            intimacy_point += add_value
-            self.redis_client.hset(intimacy_point_redis_key, AI_memory_intimacy_point, intimacy_point)
+            old_intimacy_point = self.redis_client.hget(intimacy_point_redis_key, AI_memory_intimacy_point)
+            old_intimacy_point = int(old_intimacy_point) if old_intimacy_point else 0
+            new_intimacy_point = old_intimacy_point + add_value
+            self.redis_client.hset(intimacy_point_redis_key, AI_memory_intimacy_point, new_intimacy_point)
 
             ids = self.mongo_db.create_document('AI_intimacy_record', [ticket.dict() for ticket in intimacy_ticket_list])
+
+            for level, point in self.intimacy_level2point.items():
+                if new_intimacy_point >= point > old_intimacy_point:
+                    tmp_relation_mapping = {
+                        1: 'just_met',
+                        2: 'casual_friend',
+                        3: 'special_friend',
+                        4: 'best_friend'
+                    }
+                    new_relation = tmp_relation_mapping[level]
+                    self._upgrade_intimacy_level(source_id, target_id, new_relation)
             logger.debug(f'create AI_intimacy_record ids: {[str(id) for id in ids]}')
 
     def _upgrade_intimacy_level(self, source_id: str, target_id: str, request_level: str) -> bool:
@@ -157,9 +168,6 @@ class IntimacyMgr:
                     IntimacyMgr._instance = object.__new__(cls)
         return IntimacyMgr._instance
 
+
 def _assemble_key(intimacy_ticket: IntimacyBase) -> str:
     return f'{intimacy_ticket.source_id} intimacy towards {intimacy_ticket.target_id}'
-
-
-if __name__ == '__main__':
-    print(max([]))
