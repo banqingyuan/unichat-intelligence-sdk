@@ -48,9 +48,10 @@ Energy_Cost_Type_AI_Audio = "AI_Audio"
 Energy_Cost_Type_User_Audio = "User_Audio"
 
 
-def record_user_energy_cost(UUID: str, UID: str, AID: str, typ: str, quantity: int, remark: str, ai_service_channel_name: str):
+def record_user_energy_cost(UUID: str, UID: str, AID: str, typ: str, quantity: int, remark: str, ai_service_channel_name: str) -> int:
 
     """
+    return energy cost
     message AIConsumeRequest {
         // unique id of this consumption.
         string UUID = 1;
@@ -65,6 +66,7 @@ def record_user_energy_cost(UUID: str, UID: str, AID: str, typ: str, quantity: i
     message AIConsumeResponse {
         StatusCodeEnum    StatusCode  = 1;
         string            Message = 2;
+        int32             EnergyCost = 3;
     }
     """
 
@@ -81,7 +83,7 @@ def record_user_energy_cost(UUID: str, UID: str, AID: str, typ: str, quantity: i
         response = stub.AIConsume(request)
         logger.debug(f"record_user_energy_cost response: {response}")
         if response.StatusCode == 0:
-            return True
+            return response.EnergyCost
         else:
             raise Exception(f"record_user_energy_cost error: {response.Message}")
 

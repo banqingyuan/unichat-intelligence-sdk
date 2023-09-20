@@ -1,4 +1,5 @@
 import logging
+import threading
 import time
 from typing import Dict, List
 from common_py.client.azure_mongo import MongoDBClient
@@ -19,6 +20,8 @@ class IntimacyMgr:
     """
     亲密度管理
     """
+    _instance_lock = threading.Lock()
+
     intimacy_level2point = {
         1:    0,
         2:    100,
@@ -34,11 +37,12 @@ class IntimacyMgr:
         'romantic_relationship': 4,
     }
 
-    def __init__(self):
-        self.redis_client = RedisClient()
-        self.mongo_db = MongoDBClient()
-        self.intimacy_stash: Dict[str, List[IntimacyBase]] = {}
-        self.uuid_map: Dict[str, List[IntimacyTicketChatTime]] = {}  # 有些亲密度单据需要合并，比如聊天时长，需要根据UUID进行合并
+    def __init__(self, need_init: bool = False):
+        if need_init:
+            self.redis_client = RedisClient()
+            self.mongo_db = MongoDBClient()
+            self.intimacy_stash: Dict[str, List[IntimacyBase]] = {}
+            self.uuid_map: Dict[str, List[IntimacyTicketChatTime]] = {}  # 有些亲密度单据需要合并，比如聊天时长，需要根据UUID进行合并
 
     def add_chat_time_intimacy(self, intimacy_ticket: IntimacyTicketChatTime):
         if intimacy_ticket.UUID not in self.uuid_map:  # 两个AI互相对话的时候这个逻辑会有一些问题，短期没有AI对话的需求，先不考虑
@@ -146,6 +150,12 @@ class IntimacyMgr:
             return False
         self.redis_client.hset(intimacy_point_redis_key, AI_memory_intimacy_level, request_level)
 
+    def __new__(cls, *args, **kwargs):
+        if not hasattr(IntimacyMgr, "_instance"):
+            with IntimacyMgr._instance_lock:
+                if not hasattr(IntimacyMgr, "_instance"):
+                    IntimacyMgr._instance = object.__new__(cls)
+        return IntimacyMgr._instance
 
 def _assemble_key(intimacy_ticket: IntimacyBase) -> str:
     return f'{intimacy_ticket.source_id} intimacy towards {intimacy_ticket.target_id}'
