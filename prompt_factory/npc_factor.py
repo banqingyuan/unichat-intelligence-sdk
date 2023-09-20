@@ -138,6 +138,11 @@ class NPCFactory:
             if not new_prompt_tpl:
                 raise ValueError(f"Can not find prompt_tpl in tpl: {tpl_name}")
             update_fields['prompt_tpl'] = json.dumps(new_prompt_tpl)
+        if 'description' in fields:
+            new_description = tpl_res.get('description', None)
+            if not new_description:
+                raise ValueError(f"Can not find description in tpl: {tpl_name}")
+            update_fields['description'] = new_description
 
         if len(update_fields) == 0:
             raise ValueError('input update_fields can not be empty')
