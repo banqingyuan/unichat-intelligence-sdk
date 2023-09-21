@@ -159,7 +159,7 @@ class IntimacyMgr:
         level_request_point = self.intimacy_level2point[self.support_level[request_level]]
         if intimacy_point < level_request_point:
             return False
-        self.redis_client.hset(intimacy_point_redis_key, AI_memory_intimacy_level, request_level)
+        self.redis_client.hset(intimacy_point_redis_key, {AI_memory_intimacy_level: request_level})
 
     def __new__(cls, *args, **kwargs):
         if not hasattr(IntimacyMgr, "_instance"):
