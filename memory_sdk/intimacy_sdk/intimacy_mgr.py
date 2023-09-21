@@ -125,7 +125,7 @@ class IntimacyMgr:
                 self._add_in_stash(AI_intimacy_ticket)
 
     def _on_save(self):
-        for intimacy_key, intimacy_ticket_list in self.intimacy_stash:
+        for intimacy_key, intimacy_ticket_list in self.intimacy_stash.items():
             source_id = intimacy_ticket_list[0].source_id
             target_id = intimacy_ticket_list[0].target_id
             add_value = sum([ticket.add_value for ticket in intimacy_ticket_list])
