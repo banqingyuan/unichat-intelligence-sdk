@@ -134,7 +134,7 @@ class IntimacyMgr:
             old_intimacy_point = self.redis_client.hget(intimacy_point_redis_key, AI_memory_intimacy_point)
             old_intimacy_point = int(old_intimacy_point) if old_intimacy_point else 0
             new_intimacy_point = old_intimacy_point + add_value
-            self.redis_client.hset(intimacy_point_redis_key, AI_memory_intimacy_point, new_intimacy_point)
+            self.redis_client.hset(intimacy_point_redis_key, {AI_memory_intimacy_point: new_intimacy_point})
 
             ids = self.mongo_db.create_document('AI_intimacy_record', [ticket.dict() for ticket in intimacy_ticket_list])
 
