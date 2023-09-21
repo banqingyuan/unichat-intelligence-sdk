@@ -69,7 +69,7 @@ class IntimacyMgr:
 
     def _combine_chat_time_ticket(self):
         # 合并聊天时长的单据
-        for uuid, ticket_list in self.uuid_map:
+        for uuid, ticket_list in self.uuid_map.items():
             if len(ticket_list) == 0:
                 continue
             current_ts = int(time.time())
