@@ -83,7 +83,7 @@ def record_user_energy_cost(UUID: str, UID: str, AID: str, typ: str, quantity: i
         response = stub.AIConsume(request)
         logger.debug(f"record_user_energy_cost response: {response}")
         if response.StatusCode == 0:
-            return response.EnergyCost
+            return response.EnergyCount
         else:
             raise Exception(f"record_user_energy_cost error: {response.Message}")
 
