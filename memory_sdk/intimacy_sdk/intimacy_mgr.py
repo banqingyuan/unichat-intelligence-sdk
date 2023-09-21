@@ -68,6 +68,7 @@ class IntimacyMgr:
                 continue
 
     def _combine_chat_time_ticket(self):
+        combined_uuid_lst = []
         # 合并聊天时长的单据
         for uuid, ticket_list in self.uuid_map.items():
             if len(ticket_list) == 0:
@@ -76,6 +77,7 @@ class IntimacyMgr:
             if not all([(current_ts - ticket.ts) > 30 for ticket in ticket_list]):
                 # 半分钟内有更新，不进行保存
                 continue
+            combined_uuid_lst.append(uuid)
             if_user_in_chat = any([ticket.speaker != 'AI' for ticket in ticket_list])
             if_AI_in_chat = any([ticket.speaker == 'AI' for ticket in ticket_list])
 
@@ -123,6 +125,8 @@ class IntimacyMgr:
                                                             speaker=speaker,
                                                             UUID=uuid)
                 self._add_in_stash(AI_intimacy_ticket)
+        for uuid in combined_uuid_lst:
+            del self.uuid_map[uuid]
 
     def _on_save(self):
         for intimacy_key, intimacy_ticket_list in self.intimacy_stash.items():
