@@ -1,6 +1,7 @@
 import logging
 import threading
 import time
+from copy import deepcopy
 from typing import Dict, List
 from common_py.client.azure_mongo import MongoDBClient
 from common_py.client.redis_client import RedisClient, RedisAIMemoryInfo
@@ -39,6 +40,7 @@ class IntimacyMgr:
 
     def __init__(self, need_init: bool = False):
         if need_init:
+            self.thread_lock = threading.Lock()
             self.redis_client = RedisClient()
             self.mongo_db = MongoDBClient()
             self.intimacy_stash: Dict[str, List[IntimacyBase]] = {}
@@ -51,11 +53,12 @@ class IntimacyMgr:
             self.uuid_map[intimacy_ticket.UUID].append(intimacy_ticket)
 
     def _add_in_stash(self, intimacy_ticket: IntimacyBase):
-        intimacy_key = _assemble_key(intimacy_ticket)
-        if intimacy_key not in self.intimacy_stash:
-            self.intimacy_stash[intimacy_key] = [intimacy_ticket]
-        else:
-            self.intimacy_stash[intimacy_key].append(intimacy_ticket)
+        with self.thread_lock.acquire():
+            intimacy_key = _assemble_key(intimacy_ticket)
+            if intimacy_key not in self.intimacy_stash:
+                self.intimacy_stash[intimacy_key] = [intimacy_ticket]
+            else:
+                self.intimacy_stash[intimacy_key].append(intimacy_ticket)
 
     def save_loop(self):
         while True:
@@ -129,7 +132,9 @@ class IntimacyMgr:
             del self.uuid_map[uuid]
 
     def _on_save(self):
-        for intimacy_key, intimacy_ticket_list in self.intimacy_stash.items():
+        new_dict = deepcopy(self.intimacy_stash)
+        self.intimacy_stash = {}
+        for intimacy_key, intimacy_ticket_list in new_dict.items():
             source_id = intimacy_ticket_list[0].source_id
             target_id = intimacy_ticket_list[0].target_id
             add_value = sum([ticket.add_value for ticket in intimacy_ticket_list])
