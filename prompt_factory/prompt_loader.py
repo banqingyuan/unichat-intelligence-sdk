@@ -16,6 +16,7 @@ from common_py.client.pinecone_client import PineconeClientFactory
 from common_py.client.redis_client import RedisClient
 from common_py.dto.ai_instance import AIBasicInformation
 from common_py.dto.lui_usecase import LUIUsecaseInfo, LUIUsecase
+from common_py.dto.unicaht_knowledge import UnichatKnowledgeInfo, UnichatKnowledge
 from common_py.dto.user import UserBasicInformation
 from common_py.utils.similarity import similarity
 from opencensus.trace.tracer import Tracer
@@ -113,7 +114,7 @@ class PromptLoader:
             fixed_res = ""
             try:
                 if fixed_tpl is not None:
-                    variables_res = self._get_variables_results(tpl, **params)
+                    variables_res = self._get_variables_results(tpl, chat_input, **params)
                     condition = tpl.get('condition', None)
                     if condition is not None:
                         condition_res = self._get_condition_results(condition, **variables_res)
@@ -158,81 +159,101 @@ class PromptLoader:
     #     reflection_str = '\n'.join([f'{value}' for value in accepted_reflection.values()])
     #     return reflection_str
 
-    def _get_vector_database(self, vdb_info, chat_embedding: List[float], **params) -> str:
-        namespace = vdb_info.get('namespace', None)
-        metadata = vdb_info.get('metadata', [])
-        topK = vdb_info.get('top', 2)
-        if namespace is None or metadata is None:
-            return ""
-        namespace = namespace.format(**params)
-        query_dict = {}
-        if len(metadata) > 1:
-            query_list = []
-            for meta_item in metadata:
-                query_list.append(self._parse_single_metadata(meta_item, **params))
-            query_dict['$and'] = query_list
-        elif len(metadata) == 1:
-            query_dict = self._parse_single_metadata(metadata[0], **params)
-        logger.debug(f"query from vector database with namespace {namespace}, filter: {query_dict}")
+    # def _get_vector_database(self, vdb_info, chat_embedding: List[float], **params) -> str:
+    #     namespace = vdb_info.get('namespace', None)
+    #     metadata = vdb_info.get('metadata', [])
+    #     topK = vdb_info.get('top', 2)
+    #     if namespace is None or metadata is None:
+    #         return ""
+    #     namespace = namespace.format(**params)
+    #     query_dict = {}
+    #     if len(metadata) > 1:
+    #         query_list = []
+    #         for meta_item in metadata:
+    #             query_list.append(self._parse_single_metadata(meta_item, **params))
+    #         query_dict['$and'] = query_list
+    #     elif len(metadata) == 1:
+    #         query_dict = self._parse_single_metadata(metadata[0], **params)
+    #     logger.debug(f"query from vector database with namespace {namespace}, filter: {query_dict}")
 
-        index = vdb_info['index_name']
-        resp = PineconeClientFactory().get_client(index=index, environment="us-west4-gcp-free").query_index(
-            namespace=namespace,
-            vector=chat_embedding,
-            top_k=topK,
-            filter=query_dict,
-            include_metadata=True
-        )
-        if 'matches' not in resp:
-            return ""
-        vec_res = []
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            for match in resp['matches']:
-                if 'metadata' not in match:
-                    continue
-                metadata = match['metadata']
-                if 'text_key' not in metadata:
-                    continue
-                executor.submit(self._get_text_from_blob, vdb_info, metadata, vec_res)
-        logger.debug(f"vector database query result: {vec_res}")
-        return '\n'.join(vec_res)
+        # index = vdb_info['index_name']
+        # resp = PineconeClientFactory().get_client(index=index, environment="us-west4-gcp-free").query_index(
+        #     namespace=namespace,
+        #     vector=chat_embedding,
+        #     top_k=topK,
+        #     filter=query_dict,
+        #     include_metadata=True
+        # )
+        # if 'matches' not in resp:
+        #     return ""
+        # vec_res = []
+        # with ThreadPoolExecutor(max_workers=5) as executor:
+        #     for match in resp['matches']:
+        #         if 'metadata' not in match:
+        #             continue
+        #         metadata = match['metadata']
+        #         if 'text_key' not in metadata:
+        #             continue
+        #         executor.submit(self._get_text_from_blob, vdb_info, metadata, vec_res)
+        # logger.debug(f"vector database query result: {vec_res}")
+        # return '\n'.join(vec_res)
 
-    def _get_text_from_blob(self, vdb_info, metadata, vec_res: list):
-        text_key = metadata['text_key']
-        text_store = vdb_info['text_store']
-        data = ""
-        if text_store['type'] == 'redis':
-            data = self.redis_client.get(text_key)
-        elif text_store['type'] == 'mongodb':
-            res = self.mongodb_client.find_one_from_collection(text_store['collection'], {'_id': ObjectId(text_key)})
-            if res is None:
-                return
-            data = res[text_store.get('field', 'text')]
-        vec_res.append(data)
+    # def _get_text_from_blob(self, vdb_info, metadata, vec_res: list):
+    #     text_key = metadata['text_key']
+    #     text_store = vdb_info['text_store']
+    #     data = ""
+    #     if text_store['type'] == 'redis':
+    #         data = self.redis_client.get(text_key)
+    #     elif text_store['type'] == 'mongodb':
+    #         res = self.mongodb_client.find_one_from_collection(text_store['collection'], {'_id': ObjectId(text_key)})
+    #         if res is None:
+    #             return
+    #         data = res[text_store.get('field', 'text')]
+    #     vec_res.append(data)
 
-    def _maintain_top3(self, top3_list: List, item: tuple):
-        if len(top3_list) < 3:
-            top3_list.append(item)
-        else:
-            min_index = min(enumerate(top3_list), key=lambda x: x[1][0])[0]
-            if item[0] > top3_list[min_index][0]:
-                top3_list[min_index] = item
-        top3_list.sort(key=lambda x: x[0], reverse=True)
-        return top3_list
+    # def _maintain_top3(self, top3_list: List, item: tuple):
+    #     if len(top3_list) < 3:
+    #         top3_list.append(item)
+    #     else:
+    #         min_index = min(enumerate(top3_list), key=lambda x: x[1][0])[0]
+    #         if item[0] > top3_list[min_index][0]:
+    #             top3_list[min_index] = item
+    #     top3_list.sort(key=lambda x: x[0], reverse=True)
+    #     return top3_list
 
-    def _get_variables_results(self, tpl: dict, **params) -> dict:
+    def _get_variables_results(self, tpl: dict, chat_input: str, **params) -> dict:
         variables = tpl.get("variables", None)
         variable_res = {}
         if variables is not None:
             for key, variable in variables.items():
                 # looking for redis cache, if not cached, then query from pg if pg source exists
+                default_value = variable.get('default', None)
+                if default_value is not None:
+                    variable_res[key] = default_value
                 if key in params:
                     variable_res[key] = params[key]
                     continue
-                else:
-                    default_value = variable.get('default', None)
-                    if default_value is not None:
-                        variable_res[key] = default_value
+                elif 'vector_database' in variable:
+                    try:
+                        vdb_info = variable['vector_database']
+                        model = vdb_info['model']
+                        meta_filter = vdb_info['meta_filter']
+                        top_k = vdb_info.get('top_k', 2)
+                        threshold = vdb_info.get('threshold', None)
+                        content_field = vdb_info['content_field']
+                        if model == 'UnichatKnowledgeInfo':
+                            res = query_vector_info(UnichatKnowledge, chat_input, meta_filter, top_k, threshold=threshold)
+                            if res is None:
+                                continue
+                        else:
+                            logger.error(f"model {model} not supported")
+                            continue
+                        var_res = '\n'.join([item[content_field] for item in res])
+                        variable_res[key] = var_res
+                    except KeyError as e:
+                        logger.exception(e)
+                        continue
+
                 # else:
                 # if 'db_source' not in variable:
                 #     raise Exception(f"variable {key} has no db_source and can not found in redis")
@@ -328,21 +349,21 @@ class PromptLoader:
                 data_map.update(redis_data)
         return data_map
 
-    def _parse_single_metadata(self, meta_item: str, **params):
-        meta_elements = meta_item.split(':')
-        if len(meta_elements) != 3:
-            raise Exception(f"metadata {meta_item} has wrong format")
-        meta_name, operator, meta_value_tpl = meta_elements[0], meta_elements[1], meta_elements[2]
-        meta_value = meta_value_tpl.format(**params)
-        query_dict = {}
-        if operator == 'contain':
-            value_list = meta_value.split(',')
-            query_dict[meta_name] = {'$in': value_list}
-        elif operator == 'equal':
-            query_dict[meta_name] = meta_value
-        else:
-            raise Exception(f"vector database operator {operator} not support yet")
-        return query_dict
+    # def _parse_single_metadata(self, meta_item: str, **params):
+    #     meta_elements = meta_item.split(':')
+    #     if len(meta_elements) != 3:
+    #         raise Exception(f"metadata {meta_item} has wrong format")
+    #     meta_name, operator, meta_value_tpl = meta_elements[0], meta_elements[1], meta_elements[2]
+    #     meta_value = meta_value_tpl.format(**params)
+    #     query_dict = {}
+    #     if operator == 'contain':
+    #         value_list = meta_value.split(',')
+    #         query_dict[meta_name] = {'$in': value_list}
+    #     elif operator == 'equal':
+    #         query_dict[meta_name] = meta_value
+    #     else:
+    #         raise Exception(f"vector database operator {operator} not support yet")
+    #     return query_dict
 
     def _get_condition_results(self, condition, **param) -> bool:
         if not all([key in condition_elements for key in condition.keys()]):

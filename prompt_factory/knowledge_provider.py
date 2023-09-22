@@ -5,7 +5,7 @@ from hashlib import md5
 from typing import List
 
 from common_py.client.embedding import OpenAIEmbedding
-from common_py.client.pg import update_by_id, query_vector_info, PgEngine, batch_insert_vector
+from common_py.client.pg import update_by_id, query_vector_info, PgEngine, batch_insert_vector, delete_records_by_filter
 from common_py.dto.unicaht_knowledge import UnichatKnowledge, UnichatKnowledgeInfo, load_all_knowledge
 from common_py.utils.logger import wrapper_std_output, wrapper_azure_log_handler
 
@@ -54,9 +54,9 @@ class KnowledgeLoader:
             data_list=items,
         )
         # if len(ids) > 0:
-        #     self.mongo_client.delete_many_document("AI_tina_knowledge", {"_id": {"$nin": fresh_ids}})
-        #     self.pinecone_client.delete_item(namespace="unichat_knowledge_database",
-        #                                      filter={"valid_tag": {'$nin': [new_round_meta]}})
+        #     # self.mongo_client.delete_many_document("AI_tina_knowledge", {"_id": {"$nin": fresh_ids}})
+        #     delete_records_by_filter(UnichatKnowledge,
+        #                                      {"valid_tag": {'$nin': [new_round_meta]}})
 
     def _refresh_pgvector_metadata(self, md5_of_item: str, new_round_meta: str):
         try:
