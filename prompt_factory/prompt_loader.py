@@ -241,7 +241,7 @@ class PromptLoader:
                         top_k = vdb_info.get('top_k', 2)
                         threshold = vdb_info.get('threshold', None)
                         content_field = vdb_info['content_field']
-                        if model == 'UnichatKnowledgeInfo':
+                        if model == 'UnichatKnowledge':
                             res = query_vector_info(UnichatKnowledge, chat_input, meta_filter, top_k, threshold=threshold)
                             if res is None:
                                 continue
