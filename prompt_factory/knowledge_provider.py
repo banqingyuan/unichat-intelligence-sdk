@@ -55,8 +55,8 @@ class KnowledgeLoader:
         )
         # if len(ids) > 0:
         #     # self.mongo_client.delete_many_document("AI_tina_knowledge", {"_id": {"$nin": fresh_ids}})
-        #     delete_records_by_filter(UnichatKnowledge,
-        #                                      {"valid_tag": {'$nin': [new_round_meta]}})
+        delete_records_by_filter(UnichatKnowledge,
+                                         {"valid_tag": {'$nin': [new_round_meta]}})
 
     def _refresh_pgvector_metadata(self, md5_of_item: str, new_round_meta: str):
         try:
@@ -86,80 +86,94 @@ class KnowledgeLoader:
 
 if __name__ == "__main__":
     pg_config = {
-        "host": "c.postgre-east.postgres.database.azure.com",
+        "host": "c-unichat-postgres-prod.q2t5np375m754a.postgres.cosmos.azure.com",
         "user": "citus",
         "db_name": "citus"
     }
     PgEngine(**pg_config)
 
-    knowledge_text = """应用概述：这部分包含应用的基本信息
-  1. 基本介绍：我们希望让朋友们能够随时随地跨越空间距离相聚，就像在现实中一样面对面交谈，观看视频，玩桌游。Unichat致力于打造一个无障碍、简洁直观的社交空间，让社交回归本质，回归人和人之间的直接交流。我们的愿景是将远程社交从二维升级为三维，通过XR技术，我们希望能还原甚至超越现实中的社交和聚会体验。
-  2. 应用现在是1.0版本，我们会继续上线更多功能和桌游，敬请期待！
+    knowledge_text = """Application Overview (Basic introduction to the app; its purpose; what it does)
+    1. Basic Introduction: We aspire to let friends gather quickly across spatial distances anytime and anywhere, chatting face-to-face, watching videos, and playing board games together, just like in real life. We aim to bring socializing back to its essence, emphasizing direct communication between individuals.
+    2. The app is currently at version 1.0. Stay tuned as we will be releasing more features and board games!
 *****
-Tina能力：详细介绍Tina的功能和能力。
-  1. Tina可以回答各类问题
-  2. 支持Language UI，可以直接对Tina说话，语音进行各种操作。
-  3. 有反馈也可以和Tina说哦，会帮你转达
+Tina's Abilities (Features and capabilities of Tina; how to use Tina; its utilities)
+    1. Tina can answer various questions about the app.
+    2. Sonn will supports Language UI, allowing users to talk directly to Tina and perform various operations via voice commands.
+    3. If you have feedback, you can tell Tina, and she will relay the message.
 *****
-应用交互：解释应用中各种交互的方式。
-  1. 如何切换手势：将Quest 2手柄垂直放在桌面上，把手 移到面前晃动，即可切换成手势操作。
-  2. 呼出主菜单：左手张开手心朝向自己，捏合拇指和食指后松开
-  3. 左手轮盘快速选择：左手张开手心朝向自己，捏合拇指和食指后向相应方向微微移动手后松开即可快捷操作。
-  4. 调整高度：双手朝前，捏合双手拇指食指垂直向上或向下拖动，可以每次调整15cm高度。
-  5. 调整角度或转向：
-    1. 方案1：双手朝前，捏合双手拇指食指水平方向旋转；
-    2. 方案二：右手微微抬起，手掌朝向左面，收紧中指无名指和小指，此时可以看到一个左右两边的箭头，微微调整手的位置然后捏合拇指食指即可实现转向
-  6. 调整位置或瞬移：
-    1. 方案1：双手朝前，捏合双手拇指食指水平方向同一方向拖拽，比如向后拖拽即可向前；
-    2. 方案2：右手微微抬起，手掌朝向上方，收紧中指无名指和小指，此时可以看到一个弧线显示待传送的位置，微微调整手的位置然后捏合拇指食指即可实现瞬移。
+Interaction: Switching to hand gestures: Place the Quest 2 controller vertically on the desk, wave your hand in front, and the mode will switch to hand gestures.
 *****
-应用功能介绍：详细介绍每个功能，例如快速见面、桌游、浏览器、AI匹配、AI能量和会员相关。每个功能都应有详细的说明和操作步骤。
-  1. 快速见面：
-    1. 在主页点击在线好友头像进入详情页即可点击见面按钮
-    2. 在主页点击好友房间即可快速加入
-    3. 在发现页可以快速加入公开房间
+Interaction: Accessing main menu: Open your left hand with the palm facing you, pinch the thumb and index finger together, then release.
 *****
-问：能更换Tina形象吗？
-答：暂时不可以，后续会添加相应功能的！
+Interaction: Left-hand quick select: Open your left hand with the palm facing you, pinch the thumb and index finger, then slightly move your hand in the desired direction for quick access.
 *****
-问：能给Tina换衣服吗？
-答：暂时不可以，后续会添加相应功能的！
+Interaction: Adjusting height: Extend both hands forward, pinch both thumbs and index fingers, then drag vertically to adjust by 15cm increments.
 *****
-问：如何提交反馈？
-答： 如果想提交反馈，可以到这个页面，选择类别后直接说话即可。Unichat团队会做后续的跟进。
-    也可以加入我们Discord群，群号为xxx，欢迎你！
+Interaction: Adjusting angle or direction or turn:
+        a. Option 1: Extend both hands forward, pinch and rotate the thumbs and index fingers horizontally.
+        b. Option 2: Slightly raise the right hand with the palm facing left, curl the middle, ring, and pinky fingers. Arrows will appear on both sides; adjust hand position slightly, pinch thumb and index finger to turn.
 *****
-问：Unichat有哪些游戏？
-答： 目前有五子棋和国际象棋，正在开发更多的桌游比如德州扑克和Uno，敬请期待！
+Interaction: Moving, positioning, or teleporting:
+        a. Option 1: Extend both hands forward, pinch and drag thumbs and index fingers horizontally in the same direction. Dragging backward will move you forward.
+        b. Option 2: Slightly raise your right hand with the palm facing upwards, curl the middle, ring, and pinky fingers. A trajectory line will show the teleporting position; adjust hand position slightly, then pinch thumb and index finger to teleport.
 *****
-问：Unichat能做什么？
-答： 可以随时随地和朋友一起浏览视频和听音乐，一起玩桌游，我们正在开发更多桌游，完全免费，敬请期待！
+Application Features (Detailed introduction of each feature, such as quick meet-up, board games, browser, AI matching, AI energy, and membership-related)
+    1. Quick Meet-Up (How to meet friends)
+        a. Click on online friends' name on the main menu, then click the join button in the details page.
+        b. Join friends' rooms directly from the main menu.
+        c. Join public rooms quickly from the explore page.
+    2. Games (What board games and games are included in Unichat)
+        a. Currently, we have Chat Card game and Gomoku. More games will be added soon!
+    3. Browser (How to use the browser, is sharing possible?)
+        a. We will soon support shared browser so you can watch videos with friends.
 *****
-问：开Unichat会员有什么用？
-答： 可以有更长的AI和屏幕共享时长，详情可以去会员页查看
+FAQs:
+Q: Can Tina's avatar be changed?
+A: Not currently, but we'll be adding this feature soon!
 *****
-问：为什么要限制AI聊天时长？
-答： 因为AI所用的各种服务成本很高，成为会员可以覆盖您所使用的服务的一部分成本。
+Q: Can we change Tina's clothing?
+A: Not at the moment, but we plan to introduce this feature in the future!
 *****
-问：为什么要限制共享浏览器时长？
-答：因为共享浏览器的带宽费用很高，成为会员可以覆盖您所使用的服务的一部分成本。
+Q: How to submit feedback?
+A: If you wish to provide feedback, go to setting and send email. The Unichat team will follow up. You can also join our Discord group, the group ID is in the setting page.
 *****
-问: 如何添加好友？
-答: 1. 可以在房间主页中查看对方资料后添加好友。
-    2. 可以搜索朋友的Unichat ID来添加好友
+Q: Which games are available in Unichat?
+A: Currently, we offer Gomoku and Chat Cards, and we're in the process of developing more board games like Texas Hold'em and Uno. Stay tuned!
 *****
-问：如何打开浏览器？
-答：在App菜单点击浏览器打开
+Q: What can Unichat do?
+A: You can watch videos and listen to music with friends anytime, anywhere, and play board games together. We are developing more board games, all for free, so stay tuned!
 *****
-问：如何共享浏览器？
-答：点击浏览器下方共享按钮，即可共享
+Q: What are the benefits of becoming a Unichat member?
+A: Members get more chat energy and extended screen-sharing time. Details can be found on the membership page.
 *****
-LUI指示：说明如何使用语言用户界面，以及它可以完成的任务。
-  1. 可以通过语音命令来直接进行操作，试试xxx
+Q: Why is AI chat time limited? Why does chatting with you (AI) consume energy? Why energy is so expensive? Why energy consumes so fast? 
+A: The services used for chatting with AI, including me, are quite costly. Including LLM and TTS costs. We may lower the price when cost can be lower.
 *****
-隐私协议相关：详细介绍隐私协议，包括用户的数据将如何被收集和使用，以及用户如何能够控制自己的信息。
-  1. 与AI的对话内容将可能被转成长期记忆储存起来，这个数据不会与任何第三方共享。
-  2. 为了提升体验，我们只会处理匿名化的数据
-  3. 如果您想清楚数据，可以删除该AI好友，30天后即自动清除。"""
+Q: How to calculate energy consumption? How does energy convert to AI
+A: Energy use is based on voice message length, with 100 points equalling 300 seconds. Actual conversation length might be 1.5 to 2 times the calculated length, depending on the content and speed of the conversation.
+*****
+Q: Why is the browser sharing time restricted?
+A: The bandwidth cost for shared browsing is high. Becoming a member helps cover a portion of the service costs.
+*****
+Q: How do I add friends?
+A: 1. You can view profiles in room homepage and add friends from there.
+2. Search for your friend's Unichat ID to add them.
+*****
+Q: How can I modify my user ID?
+A: Go to the settings page and click on the personal homepage to modify.
+*****
+Q: How to open the browser?
+A: Click on the browser in the App menu.
+*****
+Q: How to share the browser?
+A: Click the share button below the browser to share.
+*****
+Q: How to use Language User Interface? What is LUI?
+A: You can operate directly through voice commands, e.g., open browser.
+*****
+Privacy Policy Related (how data will be used; person infomation-related):
+    1. Conversations with the AI might be stored as long-term memory but won't be shared with any third parties.
+    2. To enhance the user experience, we may process anonymized data.
+    3. If you wish to erase the data, delete the AI or close your account, and data will automatically be cleared after 30 days."""
     knowledge_loader = KnowledgeLoader()
     knowledge_loader.load_knowledge(knowledge_text)

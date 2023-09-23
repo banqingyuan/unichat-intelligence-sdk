@@ -10,7 +10,7 @@ from common_py.client.azure_mongo import MongoDBClient
 from common_py.client.embedding import OpenAIEmbedding
 from common_py.client.pg import PgEngine
 from common_py.client.redis_client import RedisClient, RedisAIInstanceInfo
-from common_py.const.ai_attr import AI_type_emma
+from common_py.const.ai_attr import AI_type_emma, AI_type_npc
 from common_py.utils.util import get_random_str
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
 
@@ -96,13 +96,16 @@ class NPCFactory:
             "gender": gender,
             "nickname": nickname if nickname else _generate_random_name(gender=gender),
             "type": typ,
-            "UID": UID,
             "input": json.dumps(input_params),
             "datasource": json.dumps(datasource),
             "prompt_tpl": json.dumps(prompt_tpl),
             "tpl_name": tpl_name,
         }
-        AID = _generate_AID(UID)
+        if typ != AI_type_npc:
+            ai_profile["UID"] = UID
+            AID = _generate_AID(UID)
+        else:
+            AID = _generate_NPC_AID()
         ai_profile["AID"] = AID
         self.redis_client.hset(f"{RedisAIInstanceInfo}{AID}", ai_profile)
         self.redis_client.expire(f"{RedisAIInstanceInfo}{AID}", 60 * 60 * 24 * 30)
@@ -242,6 +245,12 @@ def _generate_AID(UID: str) -> str:
     origin_str = f"{str(time.time())}_{get_random_str(6)}"
     md5 = hashlib.md5(origin_str.encode('utf-8')).hexdigest()
     return f"{UID}-{md5[-10:]}"
+
+
+def _generate_NPC_AID() -> str:
+    origin_str = f"{str(time.time())}_{get_random_str(6)}"
+    md5 = hashlib.md5(origin_str.encode('utf-8')).hexdigest()
+    return f"{md5[-10:]}"
 
 # if __name__ == '__main__':
 #     redis_config = {
