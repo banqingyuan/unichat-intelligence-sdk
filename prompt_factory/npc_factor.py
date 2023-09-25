@@ -111,8 +111,8 @@ class NPCFactory:
         else:
             AID = _generate_NPC_AID()
         ai_profile["AID"] = AID
-        self.redis_client.hset(f"{RedisAIInstanceInfo}{AID}", ai_profile)
-        self.redis_client.expire(f"{RedisAIInstanceInfo}{AID}", 60 * 60 * 24 * 30)
+        self.redis_client.hset(RedisAIInstanceInfo.format(AID=AID), ai_profile)
+        self.redis_client.expire(RedisAIInstanceInfo.format(AID=AID), 60 * 60 * 24 * 30)
         self.mongo_client.create_one_document("AI_instance", ai_profile)
         return AID
 
