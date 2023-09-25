@@ -11,6 +11,7 @@ from common_py.client.embedding import OpenAIEmbedding
 from common_py.client.pg import PgEngine
 from common_py.client.redis_client import RedisClient, RedisAIInstanceInfo
 from common_py.const.ai_attr import AI_type_emma, AI_type_npc
+from common_py.dto.ai_instance import AIBasicInformation
 from common_py.utils.util import get_random_str
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
 
@@ -177,15 +178,20 @@ class NPCFactory:
         )
         logger.debug(f"update many document result {mongo_result}")
 
-        # 创建一个pipeline对象
-        pipeline = self.redis_client.pipeline()
-
-        # 在pipeline中为每个AID执行hset操作
         for AID in batch_AIDS:
-            pipeline.hset(RedisAIInstanceInfo.format(AID=AID), mapping=update_fields)
+            ai_info = AIBasicInformation(AID=AID)
+            ai_info.load_from_mongo(self.mongo_client)
+            ai_info.set_to_redis(self.redis_client)
 
-        # 批量执行所有命令
-        pipeline.execute()
+        # # 创建一个pipeline对象
+        # pipeline = self.redis_client.pipeline()
+        #
+        # # 在pipeline中为每个AID执行hset操作
+        # for AID in batch_AIDS:
+        #     pipeline.hset(RedisAIInstanceInfo.format(AID=AID), mapping=update_fields)
+        #
+        # # 批量执行所有命令
+        # pipeline.execute()
 
     # def persist_AI(self, AID: str):
     #     ai_profile = self.redis_client.hgetall(f"{RedisAIInstanceInfo}{AID}")

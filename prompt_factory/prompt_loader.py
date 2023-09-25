@@ -4,24 +4,15 @@ import queue
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Dict
-from bson import ObjectId
 from common_py.ai_toolkit.openAI import filter_brackets
 
 from common_py.client.azure_mongo import MongoDBClient
 from common_py.client.pg import query_vector_info
-from common_py.const.ai_attr import AI_type_emma, AI_type_passerby, AI_type_npc, AI_type_tina
-
-from common_py.client.embedding import OpenAIEmbedding
-from common_py.client.pinecone_client import PineconeClientFactory
 from common_py.client.redis_client import RedisClient
 from common_py.dto.ai_instance import AIBasicInformation
 from common_py.dto.lui_usecase import LUIUsecaseInfo, LUIUsecase
-from common_py.dto.unicaht_knowledge import UnichatKnowledgeInfo, UnichatKnowledge
-from common_py.dto.user import UserBasicInformation
-from common_py.utils.similarity import similarity
+from common_py.dto.unicaht_knowledge import UnichatKnowledge
 from opencensus.trace.tracer import Tracer
-
-from prompt_factory.tpl_loader import emma_config, tina_config, npc_config
 
 specific_key = ['input', 'datasource']
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output

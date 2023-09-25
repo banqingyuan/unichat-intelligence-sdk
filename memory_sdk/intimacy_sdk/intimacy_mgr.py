@@ -35,7 +35,7 @@ class IntimacyMgr:
         'casual_friend': 2,
         'special_friend': 3,
         'best_friend': 4,
-        'romantic_relationship': 4,
+        'romantic_partner': 4,
     }
 
     def __init__(self, need_init: bool = False):
