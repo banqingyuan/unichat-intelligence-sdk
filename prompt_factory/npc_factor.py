@@ -79,12 +79,13 @@ class NPCFactory:
         gender = res.get('gender', None)
         nickname = res.get('nickname', None)
         prompt_tpl = res.get('prompt_tpl', None)
-
+        description = res.get('description', '')
         if not meta_data or not gender or not prompt_tpl:
             raise ValueError(f"Cannot find meta_data or gender or prompt_tpl of tpl {tpl_name}")
         avatar_id = meta_data.get('avatar_id', None)
         voice_id = meta_data.get('voice_id', None)
         typ = meta_data.get('role_type', None)
+        version = meta_data.get('version', '1.0')
         if not typ or not avatar_id or not voice_id:
             raise ValueError(f"Cannot find avatar_id or voice_id or type or of tpl metadata {tpl_name}")
 
@@ -101,6 +102,8 @@ class NPCFactory:
             "datasource": json.dumps(datasource),
             "prompt_tpl": json.dumps(prompt_tpl),
             "tpl_name": tpl_name,
+            "version": version,
+            "description": description
         }
         if typ != AI_type_npc:
             ai_profile["UID"] = UID
