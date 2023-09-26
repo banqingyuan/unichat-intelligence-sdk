@@ -24,10 +24,10 @@ class IntimacyMgr:
     _instance_lock = threading.Lock()
 
     intimacy_level2point = {
-        1:    0,
-        2:    100,
-        3:    500,
-        4:    1300,
+        1: 0,
+        2: 100,
+        3: 500,
+        4: 1300,
     }
 
     support_level = {
@@ -143,7 +143,11 @@ class IntimacyMgr:
             new_intimacy_point = old_intimacy_point + add_value
             self.redis_client.hset(intimacy_point_redis_key, {AI_memory_intimacy_point: new_intimacy_point})
 
-            ids = self.mongo_db.create_document('AI_intimacy_record', [ticket.dict() for ticket in intimacy_ticket_list])
+            ids = self.mongo_db.create_document(
+                'AI_intimacy_record',
+                [ticket.dict() for ticket in intimacy_ticket_list],
+                *['source_id', 'target_id']
+            )
 
             for level, point in self.intimacy_level2point.items():
                 if new_intimacy_point >= point > old_intimacy_point:

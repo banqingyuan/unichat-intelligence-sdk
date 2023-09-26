@@ -107,7 +107,7 @@ class BlockManager:
         if len(documents) == 0:
             logger.error(f"mongo db create error cause by empty documents")
             return
-        mongo_ids = self.mongo_client.create_document("AI_memory_block", documents)
+        self.mongo_client.create_document("AI_memory_block", documents, *['UID', 'AID'])
         logger.debug(f"mongo db create success, {documents}")
 
         # update user memory entity of good topic_mentioned_last_time
