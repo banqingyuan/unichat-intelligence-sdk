@@ -137,7 +137,7 @@ class IntimacyMgr:
             target_id = intimacy_ticket_list[0].target_id
             add_value = sum([ticket.add_value for ticket in intimacy_ticket_list])
 
-            intimacy_point_redis_key = RedisAIMemoryInfo.format(AID=source_id, UID=target_id)
+            intimacy_point_redis_key = RedisAIMemoryInfo.format(source_id=source_id, target_id=target_id)
             old_intimacy_point = self.redis_client.hget(intimacy_point_redis_key, AI_memory_intimacy_point)
             old_intimacy_point = int(old_intimacy_point) if old_intimacy_point else 0
             new_intimacy_point = old_intimacy_point + add_value
@@ -164,7 +164,7 @@ class IntimacyMgr:
     def _upgrade_intimacy_level(self, source_id: str, target_id: str, request_level: str) -> bool:
         if request_level not in self.support_level:
             raise ValueError(f'unsupported intimacy level: {request_level}')
-        intimacy_point_redis_key = RedisAIMemoryInfo.format(AID=source_id, UID=target_id)
+        intimacy_point_redis_key = RedisAIMemoryInfo.format(source_id=source_id, target_id=target_id)
         intimacy_point = self.redis_client.hget(intimacy_point_redis_key, AI_memory_intimacy_point)
         intimacy_point = int(intimacy_point) if intimacy_point else 0
         level_request_point = self.intimacy_level2point[self.support_level[request_level]]
