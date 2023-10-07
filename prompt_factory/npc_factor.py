@@ -43,9 +43,9 @@ class NPCFactory:
     }
     """
 
-    def create_new_AI(self, UID: str, TplName: str) -> str:
+    def create_new_AI(self, UID: str, TplName: str, profile: dict = None) -> str:
         TplName = TplName.lower()
-        AID = self._gen(UID, TplName)
+        AID = self._gen(UID, TplName, profile)
         return AID
 
     def update_tpl_to_instance(self, tpl_name: str, latest_version: str, *fields):
@@ -70,9 +70,10 @@ class NPCFactory:
     #     self.redis_client.expire(f"{RedisAIInstanceInfo}{AID}", 60 * 60 * 24 * 30)
     #     return AID
 
-    def _gen(self, UID: str, tpl_name: str):
+    def _gen(self, UID: str, tpl_name: str, profile: dict = None) -> str:
         res = self.mongo_client.find_one_from_collection("AI_role_template", {"tpl_name": tpl_name})
-
+        if not profile:
+            profile = {}
         if not res:
             raise ValueError(f"No such AI personality: {AI_type_emma}")
         meta_data = res.get('meta_data', None)
