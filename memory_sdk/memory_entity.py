@@ -55,6 +55,7 @@ class UserMemoryEntity:
         self.topic_mentioned_last_time: Optional[str] = None  # 上次提到的话题
 
         self.current_stash: dict = {}  # 本次对话的暂存
+        self.initialized = False
         self.load_memory()
 
     def load_memory(self):
@@ -83,6 +84,7 @@ class UserMemoryEntity:
             self.time_since_last_met_description = seconds_to_english_readable(self.time_duration_since_last_met)
 
         self.topic_mentioned_last_time = result.get(AI_memory_topic_mentioned_last_time, None)
+        self.initialized = True
 
     def init_entity(self):
         # 要防止在加载失败时误初始化导致的数据丢失, 不要做破坏性的数据写入
