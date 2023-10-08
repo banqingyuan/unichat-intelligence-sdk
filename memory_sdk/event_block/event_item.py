@@ -119,7 +119,7 @@ class EventBlock(BaseModel):
         return self.summary.format(**self.participant_ids)
 
     def load_from_mongo(self):
-
+        raise NotImplementedError
 
     def merge_event_block(self, *blocks):
         event_list = []
