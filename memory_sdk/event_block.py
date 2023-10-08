@@ -1,27 +1,145 @@
-import random
-from typing import List, Dict
+import json
 import logging
-from common_py.ai_toolkit.openAI import Message, ChatGPTClient
+import time
+from typing import List, Dict
+
+from common_py.ai_toolkit.openAI import ChatGPTClient, Message
 from common_py.client.azure_mongo import MongoDBClient
+from common_py.client.embedding import OpenAIEmbedding
 from common_py.client.redis_client import RedisClient
-from common_py.const.ai_attr import AI_type_npc
-from common_py.dto.ai_instance import AIBasicInformation, InstanceMgr
+from common_py.const.ai_attr import Entity_type_user
+from common_py.dto.ai_instance import InstanceMgr
 from common_py.model.base import BaseEvent
+from common_py.model.chat import ConversationEvent
+from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
+from common_py.utils.similarity import similarity
+from pydantic import BaseModel
 
 from memory_sdk import const
-from memory_sdk.event_block.event_item import EventBlock
-from common_py.utils.similarity import similarity
-
-from memory_sdk.event_block.reflection_extractor import ReflectionExtractor
-from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
-
-from memory_sdk.memory_entity import UserMemoryEntity, AI_memory_topic_mentioned_last_time
+from memory_sdk.memory_entity import UserMemoryEntity
+from memory_sdk.reflection_extractor import ReflectionExtractor
 
 logger = wrapper_azure_log_handler(
     wrapper_std_output(
         logging.getLogger(__name__)
     )
 )
+
+class EventBlock(BaseModel):
+    origin_event: List[BaseEvent] = []
+    AID: str = ""
+    name: str = ""
+    summary: str = ""
+
+    participant_ids: Dict[str, str] = {}
+    participants: List[str] = []
+    tags: List[str] = []
+    create_timestamp: int = "0"
+    last_active_timestamp: int = "0"
+    embedding_1536D: List[float] = []
+    tags_embedding_1536D: List[float] = []
+    importance: int = 0
+
+    # top3_similar_block: List[Tuple[str, float]] = []
+
+    def build_from_dialogue_event(self, event_list: List[BaseEvent]):
+        if len(event_list) == 0:
+            raise Exception("Event list is empty")
+        self.origin_event = event_list
+        self.create_timestamp = int(time.time())
+        for event in self.origin_event:
+            if isinstance(event, ConversationEvent):
+                # AI 也算参与者
+                # if event.role.lower() == 'ai':
+                #     continue
+                self.participant_ids[event.speaker] = event.speaker_name
+        self.last_active_timestamp = int(time.time())
+        self.name = self._build_name()
+        self._summarize()
+
+    def _summarize(self):
+        zipped_text = self._zip_event_log()
+        if zipped_text == "":
+            raise Exception("Event log is empty")
+        logger.debug(f"zipped_text: {zipped_text}")
+        messages = [
+            Message(role="system", content=const.summary_tpl),
+            Message(role="user", content=const.few_shot_user),
+            Message(role="assistant", content=const.few_shot_assistant),
+            Message(role="user", content=zipped_text),
+        ]
+        response = ChatGPTClient(temperature=0).generate(messages=messages)
+        try:
+            extract_content = json.loads(response.get_chat_content())
+        except Exception:
+            messages.append(Message(role="system", content="Your output must be valid json"))
+            response = ChatGPTClient(temperature=0).generate(messages=messages)
+            try:
+                extract_content = json.loads(response.get_chat_content())
+            except Exception:
+                logger.error(f"llm can not extract a valued json, content: {response.get_chat_content()}")
+                raise Exception("llm can not extract a valued json")
+        if "summary" not in extract_content or \
+                "tags" not in extract_content or \
+                "participants" not in extract_content:
+            raise Exception(f"llm can not extract expect struct but content: {extract_content}")
+        chatting_speaker = {}
+        for event in self.origin_event:
+            if isinstance(event, ConversationEvent):
+                chatting_speaker[event.speaker] = event.speaker_name
+        replaced_summary = extract_content["summary"]
+        if len(chatting_speaker) > 0 :
+            speaker_name_to_id = ""
+            example_username = list(chatting_speaker.keys())[0]
+            example_UID = chatting_speaker[example_username]
+            for name, id in chatting_speaker.items():
+                speaker_name_to_id += f"username {name} with id: {id} \n"
+            summary_response = ChatGPTClient(temperature=0).generate(messages=
+            [
+                Message(role="system", content=const.change_name_to_id.format(example_username=example_username, example_UID=example_UID) + speaker_name_to_id),
+            ]
+            )
+
+            replaced_summary = summary_response.get_chat_content()
+
+        self.tags = extract_content["tags"]
+        self.participants = extract_content["participants"]
+        self.summary = replaced_summary
+        logger.debug(f"summary result: {self.summary}")
+        embedding = OpenAIEmbedding()
+        self.embedding_1536D = embedding(input=self.summary)
+        self.tags_embedding_1536D = embedding(input=",".join(self.tags))
+
+    def get_summary(self):
+        for id, name in self.participant_ids.items():
+            try:
+                mem_entity = UserMemoryEntity(self.AID, id, Entity_type_user)
+                if mem_entity is None or mem_entity.user_nickname == '':
+                    continue
+                self.participant_ids[id] = mem_entity.user_nickname
+            except Exception as e:
+                logger.error(f"get_summary error: {e}")
+                continue
+
+        return self.summary.format(**self.participant_ids)
+
+    def load_from_mongo(self):
+        raise NotImplementedError
+
+    def merge_event_block(self, *blocks):
+        event_list = []
+        for block in blocks:
+            event_list.extend(block.origin_event)
+        self.build_from_dialogue_event(event_list)
+
+    def _zip_event_log(self) -> str:
+        zipped_str = ""
+        for event in self.origin_event:
+            zipped_str += event.description() + "\n"
+        return zipped_str
+
+    def _build_name(self) -> str:
+        return f"memory_block_{self.AID}_{self.create_timestamp}"
 
 
 class BlockManager:
@@ -167,11 +285,3 @@ class BlockManager:
         self.uid_importance_mem_dict = {}
 
         self.extract_reflection = ReflectionExtractor(self.AID)
-
-
-def _gen_block_list_key(AID: str) -> str:
-
-    h = hash(AID)
-    # 分片到0-23小时，分段处理
-    partition = str(h % 24)
-    return f"AI_memory_block_list_{partition}_{AID}"

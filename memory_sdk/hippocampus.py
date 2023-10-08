@@ -1,23 +1,20 @@
 import logging
 import threading
-import time
 from concurrent.futures import ThreadPoolExecutor
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
-from common_py.client.redis_client import RedisClient
-from common_py.const.ai_attr import Entity_type_user
-from common_py.dto.ai_instance import AIBasicInformation, InstanceMgr
+from common_py.const.ai_attr import Entity_type_user, AI_type_npc, Entity_type_AI
+from common_py.dto.ai_instance import InstanceMgr
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
-
-from memory_sdk.event_block.event_block_mgr import BlockManager
+from memory_sdk.event_block import BlockManager
 from memory_sdk.memory_entity import UserMemoryEntity
+
 
 logger = wrapper_azure_log_handler(
     wrapper_std_output(
         logging.getLogger(__name__)
     )
 )
-
 
 class Hippocampus:
 
@@ -97,3 +94,12 @@ class HippocampusMgr:
                 if not hasattr(HippocampusMgr, "_instance"):
                     HippocampusMgr._instance = object.__new__(cls)
         return HippocampusMgr._instance
+
+
+
+def _gen_block_list_key(AID: str) -> str:
+
+    h = hash(AID)
+    # 分片到0-23小时，分段处理
+    partition = str(h % 24)
+    return f"AI_memory_block_list_{partition}_{AID}"
