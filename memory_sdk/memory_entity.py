@@ -19,6 +19,7 @@ AI_memory_target_id = "target_id"
 AI_memory_target_type = "target_type"
 AI_memory_intimacy_point = "intimacy_point"
 AI_memory_intimacy_level = "intimacy_level"
+AI_memory_user_nickname = "user_nickname"
 AI_memory_met_times = "met_times"
 AI_memory_last_met_timestamp = "last_met_timestamp"
 AI_memory_topic_mentioned_last_time = "topic_mentioned_last_time"
@@ -36,8 +37,8 @@ class UserMemoryEntity:
     # todo 是否在这里记录上次聊天的话题
     """
 
-    def __init__(self, AID: str, target_id: str, target_type: str, redis_client: RedisClient):
-        self.redis_client = redis_client
+    def __init__(self, AID: str, target_id: str, target_type: str):
+        self.redis_client = RedisClient()
         self.mongo_client = MongoDBClient()
         self.target_id = target_id
         self.AID = AID
@@ -46,16 +47,20 @@ class UserMemoryEntity:
 
         self.user_is_owner = True if self.AID.startswith(f"{self.target_id}-") else False
         self.met_times = 0
+        self.user_nickname = ''
         self.time_since_last_met_description: Optional[str] = None  # 距离上次见面的自然语言描述 比如 1 year and 2 months ago
         self.time_duration_since_last_met: Optional[int] = None  # 距离上次见面的时间间隔，单位秒
         self.last_met_timestamp: Optional[int] = None  # 上次见面的时间戳
-
         self.topic_mentioned_last_time: Optional[str] = None  # 上次提到的话题
 
         self.current_stash: dict = {}  # 本次对话的暂存
         self.load_memory()
 
     def load_memory(self):
+        """
+        加载AI对某个人【或者AI】的记忆
+        不要放写操作
+        """
         result = self.redis_client.hgetall(RedisAIMemoryInfo.format(source_id=self.AID, target_id=self.target_id))
         if result is None:
             logger.warning(f"AIInstanceInfo with id {self.AID} not found, try to load from mongo")
@@ -69,6 +74,7 @@ class UserMemoryEntity:
         result = {k.decode(): v.decode() for k, v in result.items()}
 
         self.met_times = int(result.get(AI_memory_met_times, 0))
+        self.user_nickname = result.get(AI_memory_user_nickname, '')
 
         self.last_met_timestamp = int(result.get(AI_memory_last_met_timestamp, 0))
         if self.last_met_timestamp > 0:
@@ -76,10 +82,6 @@ class UserMemoryEntity:
             self.time_since_last_met_description = seconds_to_english_readable(self.time_duration_since_last_met)
 
         self.topic_mentioned_last_time = result.get(AI_memory_topic_mentioned_last_time, None)
-
-        # 每次加载时重置topic_mentioned_last_time,
-        # because this time is the last time of next time
-        self.element_stash(AI_memory_topic_mentioned_last_time, '')
 
     def _load_from_mongo(self):
         filter = {
@@ -91,7 +93,6 @@ class UserMemoryEntity:
         if res is None:
             return None
         return res
-
 
     def element_stash(self, key: str, value: str):
         self.current_stash[key] = value
@@ -108,24 +109,45 @@ class UserMemoryEntity:
             AI_memory_source_id: self.AID,
         }
 
-    def on_destroy(self):
-        self.met_times += 1
-        self.last_met_timestamp = int(time.time())
-        refresh_keys = {
-            **self.get_dict(),
-            **self.current_stash
-        }
-        self.redis_client.hset(RedisAIMemoryInfo.format(source_id=self.AID, target_id=self.target_id), refresh_keys)
-        user_entity = self.redis_client.hgetall(RedisAIMemoryInfo.format(source_id=self.AID, target_id=self.target_id))
-        partition_key = f"{self.AID}-{self.target_id}"
-        user_entity['_partition_key'] = partition_key
+    def save_stash(self):
+        self.redis_client.hset(RedisAIMemoryInfo.format(source_id=self.AID, target_id=self.target_id), self.current_stash)
         filter = {
             "source_id": self.AID,
             "target_id": self.target_id,
             "target_type": self.target_type,
         }
-        res = self.mongo_client.update_many_document("AI_memory_reflection", filter, user_entity, True)
-        logger.info(f"update AI_memory_reflection {res.__str__()}")
+        res = self.mongo_client.update_many_document("AI_memory_reflection", filter, self.current_stash, False)
+        self.current_stash = {}
+        logger.info(f"save stash result: {res}")
+
+    def refresh_memory(self, full_refresh=False):
+        """
+        与AI见面后的固定记忆刷新
+        """
+
+        self.met_times += 1
+        self.element_stash(AI_memory_met_times, str(self.met_times))
+        self.last_met_timestamp = int(time.time())
+        self.element_stash(AI_memory_last_met_timestamp, str(self.last_met_timestamp))
+
+        self.redis_client.hset(RedisAIMemoryInfo.format(source_id=self.AID, target_id=self.target_id), self.current_stash)
+        filter = {
+            "source_id": self.AID,
+            "target_id": self.target_id,
+            "target_type": self.target_type,
+        }
+        res = self.mongo_client.update_many_document("AI_memory_reflection", filter, self.current_stash, False)
+        if res.matched_count == 0 or full_refresh:
+            user_entity = self.redis_client.hgetall(RedisAIMemoryInfo.format(source_id=self.AID, target_id=self.target_id))
+            if user_entity is not None:
+                partition_key = f"{self.AID}-{self.target_id}"
+                user_entity['_partition_key'] = partition_key
+                res = self.mongo_client.update_many_document("AI_memory_reflection", filter, self.current_stash, True)
+                logger.info(f"create AI_memory_reflection {res.__str__()}")
+        else:
+            logger.info(f"update AI_memory_reflection {res.__str__()}")
+        self.current_stash = {}
+
 
 
 

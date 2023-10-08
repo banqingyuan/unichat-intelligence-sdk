@@ -10,10 +10,12 @@ from common_py.client.azure_mongo import MongoDBClient
 from common_py.client.embedding import OpenAIEmbedding
 from common_py.client.pg import PgEngine
 from common_py.client.redis_client import RedisClient, RedisAIInstanceInfo
-from common_py.const.ai_attr import AI_type_emma, AI_type_npc
+from common_py.const.ai_attr import AI_type_emma, AI_type_npc, Entity_type_user
 from common_py.dto.ai_instance import AIBasicInformation
 from common_py.utils.util import get_random_str
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
+
+from memory_sdk.memory_entity import AI_memory_source_id, AI_memory_target_id, AI_memory_target_type
 
 logger = wrapper_azure_log_handler(
     wrapper_std_output(
@@ -109,12 +111,27 @@ class NPCFactory:
         if typ != AI_type_npc:
             ai_profile["UID"] = UID
             AID = _generate_AID(UID)
+            partition_key = f"{AID}-{UID}"
+            mem_entity = {
+                '_partition_key': partition_key,
+                AI_memory_source_id: AID,
+                AI_memory_target_id: UID,
+                AI_memory_target_type: Entity_type_user,
+            }
+            mem_entity.update()
+            filter = {
+                AI_memory_source_id: AID,
+                AI_memory_target_id: UID,
+                AI_memory_target_type: Entity_type_user,
+            }
+            self.mongo_client.update_many_document("AI_memory_reflection", filter, mem_entity, True)
         else:
             AID = _generate_NPC_AID()
         ai_profile["AID"] = AID
         self.redis_client.hset(RedisAIInstanceInfo.format(AID=AID), ai_profile)
         self.redis_client.expire(RedisAIInstanceInfo.format(AID=AID), 60 * 60 * 24 * 30)
         self.mongo_client.create_one_document("AI_instance", ai_profile)
+
         return AID
 
     def _refresh_AI_tpl(self, tpl_name: str, version: str, *fields):

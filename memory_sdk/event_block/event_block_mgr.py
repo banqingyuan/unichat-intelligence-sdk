@@ -1,8 +1,11 @@
+import random
 from typing import List, Dict
 import logging
 from common_py.ai_toolkit.openAI import Message, ChatGPTClient
 from common_py.client.azure_mongo import MongoDBClient
 from common_py.client.redis_client import RedisClient
+from common_py.const.ai_attr import AI_type_npc
+from common_py.dto.ai_instance import AIBasicInformation, InstanceMgr
 from common_py.model.base import BaseEvent
 
 from memory_sdk import const
@@ -12,7 +15,7 @@ from common_py.utils.similarity import similarity
 from memory_sdk.event_block.reflection_extractor import ReflectionExtractor
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
 
-from memory_sdk.memory_entity import UserMemoryEntity
+from memory_sdk.memory_entity import UserMemoryEntity, AI_memory_topic_mentioned_last_time
 
 logger = wrapper_azure_log_handler(
     wrapper_std_output(
@@ -103,11 +106,14 @@ class BlockManager:
         for event_block in self.save_later:
             if event_block.importance <= 3:
                 continue
+            doc = event_block.dict(exclude={'embedding_1536D', 'tags_embedding_1536D'})
+            if self.AI_basic_info.type == AI_type_npc:
+                doc.update({'_partition_key': self.AID + '-' + str(random.randint(0, 100))})
             documents.append(event_block.dict(exclude={'embedding_1536D', 'tags_embedding_1536D'}))
         if len(documents) == 0:
             logger.error(f"mongo db create error cause by empty documents")
             return
-        self.mongo_client.create_document("AI_memory_block", documents, *['UID', 'AID'])
+        self.mongo_client.create_document("AI_memory_block", documents, *['AID'])
         logger.debug(f"mongo db create success, {documents}")
 
         # update user memory entity of good topic_mentioned_last_time
@@ -118,7 +124,7 @@ class BlockManager:
                     self.uid_importance_mem_dict[uid] = event_block.importance
                     entity = memory_entities.get(uid, None)
                     if entity is not None:
-                        entity.element_stash('topic_mentioned_last_time', event_block.summary)
+                        entity.element_stash(AI_memory_topic_mentioned_last_time, event_block.name)
 
         # redis_key = _gen_block_list_key(self.AID)
         # pipeline = self.redis_client.pipeline()
@@ -155,6 +161,7 @@ class BlockManager:
         self.save_later: List[EventBlock] = []
         self.block_dict: Dict[str, EventBlock] = {}
         self.mongo_client = MongoDBClient()
+        self.AI_basic_info = InstanceMgr().get_instance_info(AID)
         self.AID = AID
         self.redis_client = RedisClient()
         self.uid_importance_mem_dict = {}

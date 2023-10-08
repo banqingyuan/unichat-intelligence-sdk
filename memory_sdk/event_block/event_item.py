@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from memory_sdk import const
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
 
+from memory_sdk.hippocampus import HippocampusMgr
 
 logger = wrapper_azure_log_handler(
     wrapper_std_output(
@@ -45,8 +46,9 @@ class EventBlock(BaseModel):
         self.create_timestamp = int(time.time())
         for event in self.origin_event:
             if isinstance(event, ConversationEvent):
-                if event.role.lower() == 'ai':
-                    continue
+                # AI 也算参与者
+                # if event.role.lower() == 'ai':
+                #     continue
                 self.participant_ids[event.speaker] = event.speaker_name
         self.last_active_timestamp = int(time.time())
         self.name = self._build_name()
@@ -63,28 +65,61 @@ class EventBlock(BaseModel):
             Message(role="assistant", content=const.few_shot_assistant),
             Message(role="user", content=zipped_text),
         ]
-        response = ChatGPTClient(temperature=0.1).generate(messages=messages)
+        response = ChatGPTClient(temperature=0).generate(messages=messages)
         try:
             extract_content = json.loads(response.get_chat_content())
         except Exception:
             messages.append(Message(role="system", content="Your output must be valid json"))
-            response = ChatGPTClient(temperature=0.1).generate(messages=messages)
+            response = ChatGPTClient(temperature=0).generate(messages=messages)
             try:
                 extract_content = json.loads(response.get_chat_content())
             except Exception:
                 logger.error(f"llm can not extract a valued json, content: {response.get_chat_content()}")
                 raise Exception("llm can not extract a valued json")
-        if "summary" not in extract_content or\
+        if "summary" not in extract_content or \
                 "tags" not in extract_content or \
                 "participants" not in extract_content:
             raise Exception(f"llm can not extract expect struct but content: {extract_content}")
+        chatting_speaker = {}
+        for event in self.origin_event:
+            if isinstance(event, ConversationEvent):
+                chatting_speaker[event.speaker] = event.speaker_name
+        replaced_summary = extract_content["summary"]
+        if len(chatting_speaker) > 0 :
+            speaker_name_to_id = ""
+            example_username = list(chatting_speaker.keys())[0]
+            example_UID = chatting_speaker[example_username]
+            for name, id in chatting_speaker.items():
+                speaker_name_to_id += f"username {name} with id: {id} \n"
+            summary_response = ChatGPTClient(temperature=0).generate(messages=
+            [
+                Message(role="system", content=const.change_name_to_id.format(example_username=example_username, example_UID=example_UID) + speaker_name_to_id),
+            ]
+            )
+
+            replaced_summary = summary_response.get_chat_content()
+
+
         self.tags = extract_content["tags"]
         self.participants = extract_content["participants"]
-        self.summary = extract_content["summary"]
+        self.summary = replaced_summary
         logger.debug(f"summary result: {self.summary}")
         embedding = OpenAIEmbedding()
         self.embedding_1536D = embedding(input=self.summary)
         self.tags_embedding_1536D = embedding(input=",".join(self.tags))
+
+    def get_summary(self):
+        hippocampus = HippocampusMgr().get_hippocampus(self.AID)
+        for id, name in self.participant_ids.items():
+            mem_entity = hippocampus.load_memory_of_user(id)
+            if mem_entity is None or mem_entity.user_nickname == '':
+                continue
+            self.participant_ids[id] = mem_entity.user_nickname
+
+        return self.summary.format(**self.participant_ids)
+
+    def load_from_mongo(self):
+
 
     def merge_event_block(self, *blocks):
         event_list = []
@@ -118,9 +153,6 @@ class EventBlock(BaseModel):
     #             return
     #     if len(self.top3_similar_block) < 3:
     #         self.top3_similar_block.append((id, sim))
-
-
-
 
 # if __name__ == '__main__':
 #     block = EventBlock(top3_similar_block=[("3", 0.3), ("2", 0.2)])
