@@ -140,8 +140,7 @@ class IntimacyMgr:
             intimacy_point_redis_key = RedisAIMemoryInfo.format(source_id=source_id, target_id=target_id)
             old_intimacy_point = self.redis_client.hget(intimacy_point_redis_key, AI_memory_intimacy_point)
             old_intimacy_point = int(old_intimacy_point) if old_intimacy_point else 0
-            new_intimacy_point = old_intimacy_point + add_value
-            self.redis_client.hset(intimacy_point_redis_key, {AI_memory_intimacy_point: new_intimacy_point})
+            new_intimacy_point = self.redis_client.hincrby(intimacy_point_redis_key, AI_memory_intimacy_point, add_value)
 
             ids = self.mongo_db.create_document(
                 'AI_intimacy_record',
@@ -165,7 +164,7 @@ class IntimacyMgr:
         if request_level not in self.support_level:
             raise ValueError(f'unsupported intimacy level: {request_level}')
         intimacy_point_redis_key = RedisAIMemoryInfo.format(source_id=source_id, target_id=target_id)
-        intimacy_point = self.redis_client.hget(intimacy_point_redis_key, AI_memory_intimacy_point)
+        intimacy_point = self.redis_client.hget(intimacy_point_redis_key, AI_memory_intimacy_point) # todo 防止报错导致亲密度重置
         intimacy_point = int(intimacy_point) if intimacy_point else 0
         level_request_point = self.intimacy_level2point[self.support_level[request_level]]
         if intimacy_point < level_request_point:

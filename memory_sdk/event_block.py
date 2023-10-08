@@ -114,9 +114,9 @@ class EventBlock(BaseModel):
         for id, name in self.participant_ids.items():
             try:
                 mem_entity = UserMemoryEntity(self.AID, id, Entity_type_user)
-                if mem_entity is None or mem_entity.user_nickname == '':
+                if mem_entity is None or mem_entity.target_nickname == '':
                     continue
-                self.participant_ids[id] = mem_entity.user_nickname
+                self.participant_ids[id] = mem_entity.target_nickname
             except Exception as e:
                 logger.error(f"get_summary error: {e}")
                 continue
