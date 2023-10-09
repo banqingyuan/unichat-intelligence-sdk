@@ -103,6 +103,9 @@ class UserMemoryEntity:
         self.intimacy_point = int(new_intimacy_point)
         return self.intimacy_point
 
+    def get_intimacy_level(self):
+        return self.intimacy_level
+
     def set_intimacy_level(self, level: str):
         self._element_stash(AI_memory_intimacy_level, level)
         self.save_stash()

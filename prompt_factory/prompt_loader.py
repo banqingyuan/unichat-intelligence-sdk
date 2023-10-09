@@ -419,6 +419,9 @@ class PromptLoader:
                 if name == '':
                     name = UserInfoMgr().get_instance_info(UID).get_username()
                 return name
+            elif prop == 'intimacy_level':
+                level = mem_entity.get_intimacy_level()
+                return level
         elif datasource == 'user_info':
             user_info = UserInfoMgr().get_instance_info(UID)
             if prop == 'user_name':
