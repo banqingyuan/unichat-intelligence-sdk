@@ -124,7 +124,7 @@ class NPCFactory:
                 AI_memory_target_id: UID,
                 AI_memory_target_type: Entity_type_user,
             }
-            self.mongo_client.update_many_document("AI_memory_reflection", filter, mem_entity, True)
+            self.mongo_client.update_many_document("AI_memory_reflection", filter, {'$set': mem_entity}, True)
         else:
             AID = _generate_NPC_AID()
         ai_profile["AID"] = AID
