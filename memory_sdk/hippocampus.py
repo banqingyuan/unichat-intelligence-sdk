@@ -51,7 +51,7 @@ class Hippocampus:
         self.block_mgr.on_destroy(self.memory_entities)  # 和下面有先后顺序，不能一起销毁
         with ThreadPoolExecutor(max_workers=5) as executor:
             for entity in self.memory_entities.values():
-                executor.submit(entity.refresh_memory)
+                executor.submit(entity.on_destroy)
 
 
 class HippocampusMgr:
@@ -95,7 +95,6 @@ class HippocampusMgr:
                 if not hasattr(HippocampusMgr, "_instance"):
                     HippocampusMgr._instance = object.__new__(cls)
         return HippocampusMgr._instance
-
 
 
 def _gen_block_list_key(AID: str) -> str:

@@ -87,7 +87,7 @@ class EventBlock(BaseModel):
         chatting_speaker = {}
         for event in self.origin_event:
             if isinstance(event, ConversationEvent):
-                chatting_speaker[event.speaker] = event.speaker_name
+                chatting_speaker[event.speaker_name] = event.speaker
         replaced_summary = extract_content["summary"]
         if len(chatting_speaker) > 0 :
             speaker_name_to_id = ""
