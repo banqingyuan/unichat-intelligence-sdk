@@ -168,6 +168,9 @@ class UserMemoryEntity:
                 "target_type": self.target_type,
             }
             user_entity = self.redis_client.hgetall(RedisAIMemoryInfo.format(source_id=self.AID, target_id=self.target_id))
+            # decode
+            user_entity = {k.decode(): v.decode() for k, v in user_entity.items()}
+            user_entity.update(filter)
             if user_entity is not None:
                 partition_key = f"{self.AID}-{self.target_id}"
                 user_entity['_partition_key'] = partition_key
