@@ -31,6 +31,7 @@ class EventBlock(BaseModel):
     AID: str = ""
     name: str = ""
     summary: str = ""
+    raw_summary: str = ""  # 未被替换成id的summary，可读性更好一些
 
     participant_ids: Dict[str, str] = {}
     participants: List[str] = []
@@ -107,6 +108,7 @@ class EventBlock(BaseModel):
         self.tags = extract_content["tags"]
         self.participants = extract_content["participants"]
         self.summary = replaced_summary
+        self.raw_summary = extract_content["summary"]
         logger.debug(f"summary result: {self.summary}")
         embedding = OpenAIEmbedding()
         self.embedding_1536D = embedding(input=self.summary)
@@ -173,7 +175,7 @@ class BlockManager:
     def _dialogue_importance(self, event_block: EventBlock) -> int:
         messages = [
             Message(role="system", content=const.dialogue_importance),
-            Message(role="user", content=event_block.summary),
+            Message(role="user", content=event_block.raw_summary),
         ]
         for i in range(3):
             try:
