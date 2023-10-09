@@ -7,8 +7,9 @@ from common_py.client.azure_mongo import MongoDBClient
 from common_py.client.redis_client import RedisClient, RedisAIMemoryInfo
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
 
+from memory_sdk.hippocampus import HippocampusMgr
 from memory_sdk.intimacy_sdk.intimacy_ticket import IntimacyBase, IntimacyTicketChatTime
-from memory_sdk.memory_entity import AI_memory_intimacy_level, AI_memory_intimacy_point
+from memory_sdk.memory_entity import AI_memory_intimacy_level, AI_memory_intimacy_point, UserMemoryEntity
 
 logger = wrapper_azure_log_handler(
     wrapper_std_output(
@@ -137,10 +138,13 @@ class IntimacyMgr:
             target_id = intimacy_ticket_list[0].target_id
             add_value = sum([ticket.add_value for ticket in intimacy_ticket_list])
 
-            intimacy_point_redis_key = RedisAIMemoryInfo.format(source_id=source_id, target_id=target_id)
-            old_intimacy_point = self.redis_client.hget(intimacy_point_redis_key, AI_memory_intimacy_point)
-            old_intimacy_point = int(old_intimacy_point) if old_intimacy_point else 0
-            new_intimacy_point = self.redis_client.hincrby(intimacy_point_redis_key, AI_memory_intimacy_point, add_value)
+            # 这里也只处理了AI对人的亲密度，对target_id是uid做了假设
+            mem_entity = HippocampusMgr().get_hippocampus(source_id).load_memory_of_user(target_id)
+            if mem_entity is None:
+                # 防止exception，日志里面打过了
+                continue
+            old_intimacy_point = mem_entity.get_intimacy_point()
+            new_intimacy_point = mem_entity.add_intimacy_point(add_value)
 
             ids = self.mongo_db.create_document(
                 'AI_intimacy_record',
@@ -157,19 +161,18 @@ class IntimacyMgr:
                         4: 'best_friend'
                     }
                     new_relation = tmp_relation_mapping[level]
-                    self._upgrade_intimacy_level(source_id, target_id, new_relation)
+                    self._upgrade_intimacy_level(new_relation, mem_entity)
             logger.debug(f'create AI_intimacy_record ids: {[str(id) for id in ids]}')
 
-    def _upgrade_intimacy_level(self, source_id: str, target_id: str, request_level: str) -> bool:
+    def _upgrade_intimacy_level(self, request_level: str, mem_entity: UserMemoryEntity) -> bool:
         if request_level not in self.support_level:
             raise ValueError(f'unsupported intimacy level: {request_level}')
-        intimacy_point_redis_key = RedisAIMemoryInfo.format(source_id=source_id, target_id=target_id)
-        intimacy_point = self.redis_client.hget(intimacy_point_redis_key, AI_memory_intimacy_point) # todo 防止报错导致亲密度重置
-        intimacy_point = int(intimacy_point) if intimacy_point else 0
+
+        intimacy_point = mem_entity.get_intimacy_point()
         level_request_point = self.intimacy_level2point[self.support_level[request_level]]
         if intimacy_point < level_request_point:
             return False
-        self.redis_client.hset(intimacy_point_redis_key, {AI_memory_intimacy_level: request_level})
+        mem_entity.set_intimacy_level(request_level)
 
     def __new__(cls, *args, **kwargs):
         if not hasattr(IntimacyMgr, "_instance"):

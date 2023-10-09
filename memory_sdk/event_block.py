@@ -1,5 +1,6 @@
 import json
 import logging
+import random
 import time
 from typing import List, Dict
 
@@ -7,7 +8,7 @@ from common_py.ai_toolkit.openAI import ChatGPTClient, Message
 from common_py.client.azure_mongo import MongoDBClient
 from common_py.client.embedding import OpenAIEmbedding
 from common_py.client.redis_client import RedisClient
-from common_py.const.ai_attr import Entity_type_user
+from common_py.const.ai_attr import Entity_type_user, AI_type_npc
 from common_py.dto.ai_instance import InstanceMgr
 from common_py.model.base import BaseEvent
 from common_py.model.chat import ConversationEvent
@@ -16,7 +17,7 @@ from common_py.utils.similarity import similarity
 from pydantic import BaseModel
 
 from memory_sdk import const
-from memory_sdk.memory_entity import UserMemoryEntity
+from memory_sdk.memory_entity import UserMemoryEntity, AI_memory_topic_mentioned_last_time
 from memory_sdk.reflection_extractor import ReflectionExtractor
 
 logger = wrapper_azure_log_handler(
@@ -242,7 +243,7 @@ class BlockManager:
                     self.uid_importance_mem_dict[uid] = event_block.importance
                     entity = memory_entities.get(uid, None)
                     if entity is not None:
-                        entity.element_stash(AI_memory_topic_mentioned_last_time, event_block.name)
+                        entity.set_topic_mentioned_last_time(event_block.name)
 
         # redis_key = _gen_block_list_key(self.AID)
         # pipeline = self.redis_client.pipeline()

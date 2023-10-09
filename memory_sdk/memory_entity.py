@@ -43,6 +43,7 @@ class UserMemoryEntity:
         self.mongo_client = MongoDBClient()
         self.target_id = target_id
         self.AID = AID
+        self.redis_key = RedisAIMemoryInfo.format(source_id=self.AID, target_id=self.target_id)
 
         self.target_type = target_type if target_type == Entity_type_AI else Entity_type_user
 
@@ -54,6 +55,9 @@ class UserMemoryEntity:
         self.last_met_timestamp: Optional[int] = None  # 上次见面的时间戳
         self.topic_mentioned_last_time: Optional[str] = None  # 上次提到的话题
 
+        self.intimacy_point = 0
+        self.intimacy_level = 'just_met'
+
         self.current_stash: dict = {}  # 本次对话的暂存
         self.load_memory()
 
@@ -62,7 +66,7 @@ class UserMemoryEntity:
         加载AI对某个人【或者AI】的记忆
         不要放写操作
         """
-        result = self.redis_client.hgetall(RedisAIMemoryInfo.format(source_id=self.AID, target_id=self.target_id))
+        result = self.redis_client.hgetall(self.redis_key)
         if result is None:
             logger.warning(f"AIInstanceInfo with id {self.AID} not found, try to load from mongo")
             result = self._load_from_mongo()
@@ -70,7 +74,7 @@ class UserMemoryEntity:
                 logger.warning(f"AIInstanceInfo with id {self.AID} not found")
                 return
             # assure the result is a Dict[str, str]
-            self.redis_client.hset(RedisAIMemoryInfo.format(source_id=self.AID, target_id=self.target_id), result)
+            self.redis_client.hset(self.redis_key, result)
 
         result = {k.decode(): v.decode() for k, v in result.items()}
 
@@ -83,9 +87,28 @@ class UserMemoryEntity:
             self.time_since_last_met_description = seconds_to_english_readable(self.time_duration_since_last_met)
 
         self.topic_mentioned_last_time = result.get(AI_memory_topic_mentioned_last_time, None)
+        self.intimacy_point = result.get(AI_memory_intimacy_point, 0)
+        self.intimacy_level = result.get(AI_memory_intimacy_level, 'just_met')
 
     def get_target_name(self):
         return self.target_nickname
+
+    def get_intimacy_point(self):
+        return self.intimacy_point
+
+    def add_intimacy_point(self, amount: int) -> int:
+        new_intimacy_point = self.redis_client.hincrby(self.redis_key, AI_memory_intimacy_point, amount)
+        if not new_intimacy_point:
+            return 0
+        self.intimacy_point = int(new_intimacy_point)
+        return self.intimacy_point
+
+    def set_intimacy_level(self, level: str):
+        self._element_stash(AI_memory_intimacy_level, level)
+        self.save_stash()
+
+    def set_topic_mentioned_last_time(self, event_block_name: str):
+        self._element_stash(AI_memory_topic_mentioned_last_time, event_block_name)
 
     def _load_from_mongo(self):
         filter = {
@@ -98,7 +121,7 @@ class UserMemoryEntity:
             return None
         return res
 
-    def element_stash(self, key: str, value: str):
+    def _element_stash(self, key: str, value: str):
         self.current_stash[key] = value
 
     def get_dict(self):
@@ -114,7 +137,7 @@ class UserMemoryEntity:
         }
 
     def save_stash(self):
-        self.redis_client.hset(RedisAIMemoryInfo.format(source_id=self.AID, target_id=self.target_id),
+        self.redis_client.hset(self.redis_key,
                                self.current_stash)
         filter = {
             "source_id": self.AID,
@@ -130,7 +153,7 @@ class UserMemoryEntity:
         与AI见面后的固定记忆刷新
         """
 
-        self.element_stash(AI_memory_last_met_timestamp, str(int(time.time())))
+        self._element_stash(AI_memory_last_met_timestamp, str(int(time.time())))
 
         self.redis_client.hincrby(RedisAIMemoryInfo.format(source_id=self.AID, target_id=self.target_id),
                                   AI_memory_met_times, 1)
