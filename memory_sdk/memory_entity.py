@@ -93,8 +93,8 @@ class UserMemoryEntity:
     def get_target_name(self):
         return self.target_nickname
 
-    def get_intimacy_point(self):
-        return self.intimacy_point
+    def get_intimacy_point(self) -> int:
+        return int(self.intimacy_point if self.intimacy_point != '' else 0)
 
     def add_intimacy_point(self, amount: int) -> int:
         new_intimacy_point = self.redis_client.hincrby(self.redis_key, AI_memory_intimacy_point, amount)
