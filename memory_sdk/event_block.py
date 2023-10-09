@@ -98,6 +98,7 @@ class EventBlock(BaseModel):
             summary_response = ChatGPTClient(temperature=0).generate(messages=
             [
                 Message(role="system", content=const.change_name_to_id.format(example_username=example_username, example_UID=example_UID) + speaker_name_to_id),
+                Message(role="user", content=replaced_summary)
             ]
             )
 
