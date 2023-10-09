@@ -9,10 +9,13 @@ from common_py.ai_toolkit.openAI import filter_brackets
 from common_py.client.azure_mongo import MongoDBClient
 from common_py.client.pg import query_vector_info
 from common_py.client.redis_client import RedisClient
-from common_py.dto.ai_instance import AIBasicInformation
+from common_py.dto.ai_instance import AIBasicInformation, InstanceMgr
 from common_py.dto.lui_usecase import LUIUsecaseInfo, LUIUsecase
 from common_py.dto.unicaht_knowledge import UnichatKnowledge
+from common_py.dto.user import UserInfoMgr
 from opencensus.trace.tracer import Tracer
+
+from memory_sdk.hippocampus import HippocampusMgr
 
 specific_key = ['input', 'datasource']
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
@@ -28,21 +31,19 @@ condition_elements = ['left_variable', 'operator', 'right_value']
 
 class PromptLoader:
 
-    def parse_prompt(self, input_str: str, params, tracer: Tracer) -> str:
-        with tracer.span(name="load_prompt_template_datasource"):
-            prompt_queue: queue.Queue = queue.Queue()
-            variable_data = self._process_datasource(**params)
+    def parse_prompt(self, input_str: str, UID: str, prompt_tpl: dict, tracer: Tracer) -> str:
+        # with tracer.span(name="load_prompt_template_datasource"):
+        #     variable_data = self._process_datasource(**params)
             # if "persona" in variable_data:
             #     variable_data.update(variable_data["persona"])
             #     variable_data.pop("persona")
         with tracer.span(name="assemble_prompt") as span:
-            if 'prompt_tpl' not in variable_data:
-                raise Exception("prompt_tpl not found in variable_data")
-            prompt_tpl = variable_data['prompt_tpl']
+            prompt_queue: queue.Queue = queue.Queue()
+
             with ThreadPoolExecutor(max_workers=5) as executor:
                 idx = 0
                 for tpl_name, tpl_block in prompt_tpl.items():
-                    executor.submit(self._get_prompt_block, idx, tpl_block, input_str, prompt_queue, **variable_data)
+                    executor.submit(self._get_prompt_block, idx, tpl_block, input_str, prompt_queue, UID)
                     idx += 1
             res_list = []
             while not prompt_queue.empty():
@@ -98,14 +99,14 @@ class PromptLoader:
         except Exception as e:
             logger.exception(e)
 
-    def _get_prompt_block(self, idx: int, tpl: dict, chat_input: str, q: queue.Queue, **params):
+    def _get_prompt_block(self, idx: int, tpl: dict, chat_input: str, q: queue.Queue, UID: str):
         # todo 注意一下chat_input为空的处理
         try:
             fixed_tpl = tpl.get("tpl", None)
             fixed_res = ""
             try:
                 if fixed_tpl is not None:
-                    variables_res = self._get_variables_results(tpl, chat_input, **params)
+                    variables_res = self._get_variables_results(tpl, chat_input, UID)
                     condition = tpl.get('condition', None)
                     if condition is not None:
                         condition_res = self._get_condition_results(condition, **variables_res)
@@ -212,7 +213,7 @@ class PromptLoader:
     #     top3_list.sort(key=lambda x: x[0], reverse=True)
     #     return top3_list
 
-    def _get_variables_results(self, tpl: dict, chat_input: str, **params) -> dict:
+    def _get_variables_results(self, tpl: dict, chat_input: str, UID: str) -> dict:
         variables = tpl.get("variables", None)
         variable_res = {}
         if variables is not None:
@@ -221,9 +222,14 @@ class PromptLoader:
                 default_value = variable.get('default', None)
                 if default_value is not None:
                     variable_res[key] = default_value
-                if key in params:
-                    variable_res[key] = params[key]
-                    continue
+                if 'datasource' in variable and 'property' in variable:
+                    try:
+                        tmp_res = self._get_variable_from_datasource(variable['datasource'], variable['property'], UID)
+                        if tmp_res is not None:
+                            variable_res[key] = tmp_res
+                    except Exception as e:
+                        logger.exception(e)
+                        continue
                 elif 'vector_database' in variable:
                     try:
                         vdb_info = variable['vector_database']
@@ -282,63 +288,63 @@ class PromptLoader:
                 #     raise Exception(f"column {column_name} not found either in table {table} or in redis")
         return variable_res
 
-    def _process_datasource(self, **params) -> dict:
-        data_map = {}
-        if 'input' not in params or 'datasource' not in params:
-            raise Exception(f"input or datasource not found in params")
-        required_params: List[str] = params.pop("input")
-        for param in required_params:
-            if param not in params:
-                raise Exception(f"param {param} not found")
-        datasource = params.pop("datasource", {})
-
-        data_map.update(params)
-        logger.debug(f"process datasource with params {params.keys()}")
-        if "redis" in datasource:
-            for redis_detail in datasource["redis"]:
-                redis_key_tpl = redis_detail.get("key_tpl", None)
-                if not redis_key_tpl:
-                    raise Exception(f"redis key not found in datasource {datasource}")
-                redis_key = redis_key_tpl.format(**data_map)
-                # hash_key = '_'.join([redis_key, "hash"])
-                # hash_res = self.redis_client.get(hash_key)
-                # if hash_res is None:
-                #     logger.warning(f"redis_key {redis_key} has no hash key")
-                # elif hash_key in self.redis_hash_dict and self.redis_hash_dict[hash_key] == hash_res:
-                if redis_key in self.redis_data:
-                    data_map.update(self.redis_data[redis_key])
-                    continue
-
-                redis_data = {}
-                if redis_detail.get('method', None) == "hmget":
-                    if redis_detail["keymap"] is None:
-                        raise Exception(f"keymap not found in redis detail {redis_detail}")
-                    keymap = redis_detail["keymap"]
-                    if type(keymap) is not dict:
-                        raise Exception(f"keymap should be a dict")
-                    redis_res = self.redis_client.hmget(redis_key, keymap.keys())
-                    # decode
-                    redis_res = [item.decode('utf-8') if item is not None else None for item in redis_res]
-                    for key, value in zip(keymap.keys(), redis_res):
-                        if value is None:
-                            logger.warning(f"failed to load redis_key {redis_key} cause redis key not found")
-                            continue
-                        redis_data[keymap[key]] = value
-                else:
-                    raise Exception(f"redis method {redis_detail['method']} not supported")
-                if redis_data is None:
-                    logger.warning(f"failed to load redis_key {redis_key} cause redis key not found")
-                    continue
-                self.redis_data[redis_key] = redis_data
-                # if hash_res is not None:
-                #     self.redis_hash_dict[hash_key] = hash_res
-                # else:
-                #     # 如果从来没有设置过hash，说明写入方不支持，在这里帮忙hash一下
-                #     hash_val = md5(json.dumps(redis_data).encode('utf-8')).hexdigest()
-                #     self.redis_client.set(hash_key, hash_val)
-                #     self.redis_hash_dict[hash_key] = hash_val
-                data_map.update(redis_data)
-        return data_map
+    # def _process_datasource(self, **params) -> dict:
+    #     data_map = {}
+    #     if 'input' not in params or 'datasource' not in params:
+    #         raise Exception(f"input or datasource not found in params")
+    #     required_params: List[str] = params.pop("input")
+    #     for param in required_params:
+    #         if param not in params:
+    #             raise Exception(f"param {param} not found")
+    #     datasource = params.pop("datasource", {})
+    #
+    #     data_map.update(params)
+    #     logger.debug(f"process datasource with params {params.keys()}")
+    #     if "redis" in datasource:
+    #         for redis_detail in datasource["redis"]:
+    #             redis_key_tpl = redis_detail.get("key_tpl", None)
+    #             if not redis_key_tpl:
+    #                 raise Exception(f"redis key not found in datasource {datasource}")
+    #             redis_key = redis_key_tpl.format(**data_map)
+    #             # hash_key = '_'.join([redis_key, "hash"])
+    #             # hash_res = self.redis_client.get(hash_key)
+    #             # if hash_res is None:
+    #             #     logger.warning(f"redis_key {redis_key} has no hash key")
+    #             # elif hash_key in self.redis_hash_dict and self.redis_hash_dict[hash_key] == hash_res:
+    #             if redis_key in self.redis_data:
+    #                 data_map.update(self.redis_data[redis_key])
+    #                 continue
+    #
+    #             redis_data = {}
+    #             if redis_detail.get('method', None) == "hmget":
+    #                 if redis_detail["keymap"] is None:
+    #                     raise Exception(f"keymap not found in redis detail {redis_detail}")
+    #                 keymap = redis_detail["keymap"]
+    #                 if type(keymap) is not dict:
+    #                     raise Exception(f"keymap should be a dict")
+    #                 redis_res = self.redis_client.hmget(redis_key, keymap.keys())
+    #                 # decode
+    #                 redis_res = [item.decode('utf-8') if item is not None else None for item in redis_res]
+    #                 for key, value in zip(keymap.keys(), redis_res):
+    #                     if value is None:
+    #                         logger.warning(f"failed to load redis_key {redis_key} cause redis key not found")
+    #                         continue
+    #                     redis_data[keymap[key]] = value
+    #             else:
+    #                 raise Exception(f"redis method {redis_detail['method']} not supported")
+    #             if redis_data is None:
+    #                 logger.warning(f"failed to load redis_key {redis_key} cause redis key not found")
+    #                 continue
+    #             self.redis_data[redis_key] = redis_data
+    #             # if hash_res is not None:
+    #             #     self.redis_hash_dict[hash_key] = hash_res
+    #             # else:
+    #             #     # 如果从来没有设置过hash，说明写入方不支持，在这里帮忙hash一下
+    #             #     hash_val = md5(json.dumps(redis_data).encode('utf-8')).hexdigest()
+    #             #     self.redis_client.set(hash_key, hash_val)
+    #             #     self.redis_hash_dict[hash_key] = hash_val
+    #             data_map.update(redis_data)
+    #     return data_map
 
     # def _parse_single_metadata(self, meta_item: str, **params):
     #     meta_elements = meta_item.split(':')
@@ -400,14 +406,34 @@ class PromptLoader:
         #     else:
         #         raise Exception(f'left_variable {left_value} or right_value {right_value} has no operation or')
 
+    def _get_variable_from_datasource(self, datasource, prop, UID) -> str:
+        # 数据源的配置化先不做了，编码在这里
+        if datasource == 'AI_basic_info':
+            instance = InstanceMgr().get_instance_info(self.AID)
+            if prop == 'nickname':
+                return instance.get_nickname()
+        elif datasource == 'AI_memory_of_user':
+            mem_entity = HippocampusMgr().get_hippocampus(self.AID).load_memory_of_user(UID)
+            if prop == 'user_name':
+                name = mem_entity.get_target_name()
+                if name == '':
+                    name = UserInfoMgr().get_instance_info(UID).get_username()
+                return name
+        elif datasource == 'user_info':
+            user_info = UserInfoMgr().get_instance_info(UID)
+            if prop == 'user_name':
+                return user_info.get_username()
+            elif prop == 'language':
+                return user_info.get_user_language()
 
 
-
-    def __init__(self):
+    def __init__(self, AID: str):
         self.tpl: Dict = {}
         self.redis_data: Dict[str, dict] = {}
         self.redis_hash_dict: Dict[str, str] = {}
         self._db_query_lock = threading.Lock()
         self.db_result = {}
+        self.AID = AID
         self.redis_client = RedisClient()
         self.mongodb_client = MongoDBClient()
+

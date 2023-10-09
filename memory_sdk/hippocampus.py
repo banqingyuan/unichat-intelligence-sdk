@@ -16,6 +16,7 @@ logger = wrapper_azure_log_handler(
     )
 )
 
+
 class Hippocampus:
 
     def __init__(self, AID: str):

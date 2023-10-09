@@ -55,7 +55,6 @@ class UserMemoryEntity:
         self.topic_mentioned_last_time: Optional[str] = None  # 上次提到的话题
 
         self.current_stash: dict = {}  # 本次对话的暂存
-        self.initialized = False
         self.load_memory()
 
     def load_memory(self):
@@ -84,20 +83,9 @@ class UserMemoryEntity:
             self.time_since_last_met_description = seconds_to_english_readable(self.time_duration_since_last_met)
 
         self.topic_mentioned_last_time = result.get(AI_memory_topic_mentioned_last_time, None)
-        self.initialized = True
 
-    def init_entity(self):
-        # 要防止在加载失败时误初始化导致的数据丢失, 不要做破坏性的数据写入
-        if self.target_type == Entity_type_user:
-            user_info = UserInfoMgr().get_instance_info(self.target_id)
-            self.target_nickname = user_info.name
-            self.redis_client.hset(RedisAIMemoryInfo.format(source_id=self.AID, target_id=self.target_id), {
-                AI_memory_source_id: self.AID,
-                AI_memory_target_id: self.target_id,
-                AI_memory_target_type: self.target_type,
-                AI_memory_target_nickname: self.target_nickname
-            })
-
+    def get_target_name(self):
+        return self.target_nickname
 
     def _load_from_mongo(self):
         filter = {
@@ -126,7 +114,8 @@ class UserMemoryEntity:
         }
 
     def save_stash(self):
-        self.redis_client.hset(RedisAIMemoryInfo.format(source_id=self.AID, target_id=self.target_id), self.current_stash)
+        self.redis_client.hset(RedisAIMemoryInfo.format(source_id=self.AID, target_id=self.target_id),
+                               self.current_stash)
         filter = {
             "source_id": self.AID,
             "target_id": self.target_id,
@@ -136,16 +125,15 @@ class UserMemoryEntity:
         self.current_stash = {}
         logger.info(f"save stash result: {res}")
 
-    def refresh_memory(self):
+    def on_destroy(self):
         """
         与AI见面后的固定记忆刷新
         """
 
-        self.met_times += 1
-        self.element_stash(AI_memory_met_times, str(self.met_times))
-        self.last_met_timestamp = int(time.time())
-        self.element_stash(AI_memory_last_met_timestamp, str(self.last_met_timestamp))
+        self.element_stash(AI_memory_last_met_timestamp, str(int(time.time())))
 
+        self.redis_client.hincrby(RedisAIMemoryInfo.format(source_id=self.AID, target_id=self.target_id),
+                                  AI_memory_met_times, 1)
         self.redis_client.hset(RedisAIMemoryInfo.format(source_id=self.AID, target_id=self.target_id),
                                self.current_stash)
         filter = {
@@ -161,11 +149,6 @@ class UserMemoryEntity:
             logger.info(f"create AI_memory_reflection {res.__str__()}")
         self.current_stash = {}
 
-
-
-
-
-
 # if __name__ == '__main__':
 #     ad = {
 #         "a": "2",
@@ -175,4 +158,3 @@ class UserMemoryEntity:
 #         **ad
 #     }
 #     print(dct)
-
