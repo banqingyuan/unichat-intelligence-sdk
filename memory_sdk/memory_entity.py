@@ -5,7 +5,6 @@ from typing import Optional
 from common_py.client.azure_mongo import MongoDBClient
 from common_py.client.redis_client import RedisClient, RedisAIMemoryInfo
 from common_py.const.ai_attr import Entity_type_AI, Entity_type_user
-from common_py.dto.user import UserInfoMgr
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
 from memory_sdk.util import seconds_to_english_readable
 

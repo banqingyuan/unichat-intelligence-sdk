@@ -4,7 +4,10 @@ from typing import Any, Dict
 
 from common_py.model.scene import SceneEvent
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
+
+from memory_sdk.event_block import load_block_from_mongo
 from memory_sdk.hippocampus import Hippocampus
+
 from opencensus.trace import execution_context
 from pydantic import BaseModel
 
