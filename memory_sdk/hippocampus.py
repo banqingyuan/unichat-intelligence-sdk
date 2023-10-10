@@ -1,10 +1,9 @@
 import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from typing import Dict, Optional, List
+from typing import Dict, Optional
 
-from common_py.const.ai_attr import Entity_type_user, AI_type_npc, Entity_type_AI
-from common_py.dto.ai_instance import InstanceMgr
+from common_py.const.ai_attr import Entity_type_user
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
 from memory_sdk.event_block import BlockManager
 from memory_sdk.memory_entity import UserMemoryEntity
@@ -24,14 +23,14 @@ class Hippocampus:
         self.memory_entities: Dict = {}
         self.block_mgr = BlockManager(AID)
 
-    def load_memory_of_user(self, UID: str, need_refresh: bool = False) -> Optional[UserMemoryEntity]:
+    def load_memory_of_user(self, UID: str) -> Optional[UserMemoryEntity]:
         """
         加载记忆
         :param UID: 用户ID
         :return: bool 是否加载成功
         """
         try:
-            if UID in self.memory_entities or not need_refresh:
+            if UID in self.memory_entities:
                 return self.memory_entities[UID]
             entity = UserMemoryEntity(self.AID, UID, Entity_type_user)
             self.memory_entities[UID] = entity
@@ -70,7 +69,6 @@ class HippocampusMgr:
             if AID in self.hippocampus:
                 return self.hippocampus[AID]
             else:
-                InstanceMgr()
                 hippocampus = Hippocampus(AID)
                 self.hippocampus[AID] = hippocampus
                 return hippocampus
