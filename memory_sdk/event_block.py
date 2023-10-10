@@ -95,6 +95,7 @@ class EventBlock(BaseModel):
             example_username = list(chatting_speaker.keys())[0]
             example_UID = chatting_speaker[example_username]
             for name, id in chatting_speaker.items():
+                # 因为数字无法作为格式化字符串的key，所以加上一个后缀
                 speaker_name_to_id += f"username {name} with id: {id} \n"
             summary_response = ChatGPTClient(temperature=0).generate(messages=
             [
@@ -125,10 +126,10 @@ class EventBlock(BaseModel):
                 logger.error(f"get_summary error: {e}")
                 continue
 
-        return self.summary.format(**self.participant_ids)
-
-    def load_from_mongo(self):
-        raise NotImplementedError
+        summary = self.summary
+        for id, name in self.participant_ids.items():
+            summary = summary.replace(f'{{{id}}}', name)
+        return summary
 
     def merge_event_block(self, *blocks):
         event_list = []
@@ -144,6 +145,16 @@ class EventBlock(BaseModel):
 
     def _build_name(self) -> str:
         return f"memory_block_{self.AID}_{self.create_timestamp}"
+
+
+def load_block_from_mongo(block_name: str) -> EventBlock:
+    mongo_client = MongoDBClient()
+    res = mongo_client.find_one_from_collection('AI_memory_block', {'name': block_name})
+    if not res:
+        raise Exception(f"can not find block: {block_name}")
+    del res['origin_event']
+    block = EventBlock(**res)
+    return block
 
 
 class BlockManager:
@@ -289,3 +300,9 @@ class BlockManager:
         self.uid_importance_mem_dict = {}
 
         self.extract_reflection = ReflectionExtractor(self.AID)
+
+
+if __name__ == '__main__':
+    mongodb_client = MongoDBClient(DB_NAME='unichat-backend')
+    block = load_block_from_mongo('memory_block_10016-41d1462508_1696918616')
+    print(block.get_summary())
