@@ -24,14 +24,14 @@ class Hippocampus:
         self.memory_entities: Dict = {}
         self.block_mgr = BlockManager(AID)
 
-    def load_memory_of_user(self, UID: str) -> Optional[UserMemoryEntity]:
+    def load_memory_of_user(self, UID: str, need_refresh: bool = False) -> Optional[UserMemoryEntity]:
         """
         加载记忆
         :param UID: 用户ID
         :return: bool 是否加载成功
         """
         try:
-            if UID in self.memory_entities:
+            if UID in self.memory_entities or not need_refresh:
                 return self.memory_entities[UID]
             entity = UserMemoryEntity(self.AID, UID, Entity_type_user)
             self.memory_entities[UID] = entity

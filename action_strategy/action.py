@@ -49,6 +49,7 @@ class Action(BaseModel):
             'trigger_event': trigger_event,
             'sharing_params': self.sharing_params,
             'tracer': execution_context.get_opencensus_tracer(),
+            'load_block_from_mongo': load_block_from_mongo,
             **factor_value,
         }
         try:
