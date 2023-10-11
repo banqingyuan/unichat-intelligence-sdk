@@ -52,6 +52,40 @@ class IntimacyMgr:
         else:
             self.uuid_map[intimacy_ticket.UUID].append(intimacy_ticket)
 
+    def get_intimacy_level(self, UID: str, AID: str) -> str:
+        """
+        获取亲密度等级
+        :param UID: 用户ID
+        :param AID: AI ID
+        :return: 亲密度等级
+        """
+        try:
+            entity = HippocampusMgr().get_hippocampus(AID).load_memory_of_user(UID)
+            if not entity:
+                return 'just_met'
+            intimacy_level = entity.get_intimacy_level()
+            return intimacy_level
+        except Exception as e:
+            logger.error(f'get intimacy level error: {e}')
+            return 'just_met'
+
+    def get_intimacy_point(self, UID: str, AID: str) -> int:
+        """
+        获取亲密度点数
+        :param UID: 用户ID
+        :param AID: AI ID
+        :return: 亲密度点数
+        """
+        try:
+            entity = HippocampusMgr().get_hippocampus(AID).load_memory_of_user(UID)
+            if not entity:
+                return 0
+            intimacy_point = entity.get_intimacy_point()
+            return intimacy_point
+        except Exception as e:
+            logger.error(f'get intimacy point error: {e}')
+            return 0
+
     def _add_in_stash(self, intimacy_ticket: IntimacyBase):
         intimacy_key = _assemble_key(intimacy_ticket)
         if intimacy_key not in self.intimacy_stash:
