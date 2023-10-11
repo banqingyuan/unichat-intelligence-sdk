@@ -80,10 +80,9 @@ class UserMemoryEntity:
         self.met_times = int(result.get(AI_memory_met_times, 0))
         self.target_nickname = result.get(AI_memory_target_nickname, '')
 
-        self.last_met_timestamp = int(result.get(AI_memory_last_met_timestamp, 0))
-        if self.last_met_timestamp > 0:
-            self.time_duration_since_last_met = int(time.time()) - self.last_met_timestamp
-            self.time_since_last_met_description = seconds_to_english_readable(self.time_duration_since_last_met)
+        self.last_met_timestamp = int(result.get(AI_memory_last_met_timestamp, time.time()))
+        self.time_duration_since_last_met = int(time.time()) - self.last_met_timestamp
+        self.time_since_last_met_description = seconds_to_english_readable(self.time_duration_since_last_met) if self.time_duration_since_last_met < 2 else 'just now'
 
         self.topic_mentioned_last_time = result.get(AI_memory_topic_mentioned_last_time, None)
         self.intimacy_point = result.get(AI_memory_intimacy_point, 0)
@@ -91,6 +90,11 @@ class UserMemoryEntity:
 
     def get_target_name(self):
         return self.target_nickname
+
+    def set_target_name(self, name: str):
+        self.target_nickname = name
+        self._element_stash(AI_memory_target_nickname, name)
+        self.save_stash()
 
     def get_intimacy_point(self) -> int:
         return int(self.intimacy_point if self.intimacy_point != '' else 0)
