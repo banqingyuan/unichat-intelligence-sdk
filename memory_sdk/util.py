@@ -6,8 +6,10 @@ def seconds_to_english_readable(seconds):
     MONTH = 30 * DAY
     YEAR = 365 * DAY
 
+    if seconds < HOUR:
+        return "a few minutes"
     if seconds < DAY:
-        return "today"
+        return "a few hours"
     if seconds < 7 * DAY:
         return "a few days"
     if seconds < 30 * DAY:
