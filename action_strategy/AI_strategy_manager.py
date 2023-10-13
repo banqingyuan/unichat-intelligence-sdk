@@ -1,4 +1,6 @@
 import logging
+import random
+import time
 from queue import Queue
 from typing import List, Dict, Optional
 
@@ -40,6 +42,10 @@ class AIStrategyManager:
                 {
                     "target.type": "AI",
                     "target.AI_type": self.ai_info.type,
+                    "$or": [
+                        {"target.tpl_name": {"$exists": False}},
+                        {"target.tpl_name": {"$eq": ""}}
+                    ]
                 },
                 {
                     "target.tpl_name": self.ai_info.tpl_name
@@ -70,9 +76,21 @@ class AIStrategyManager:
         max_priority: Optional[int] = None  # 最高优先级，数值上最小的那个
         for strategy in eval_strategy:
             if strategy.eval(trigger_event, **factor_value) == AIActionStrategy.eval_result_execute:
-                executable_lst.append(strategy)
+                executable_lst.append(strategy) # eval 得出了满足条件的策略，但是这并不意味这该策略一定会被执行
                 max_priority = strategy.strategy_priority if max_priority is None or strategy.strategy_priority < max_priority else max_priority
-        for s in executable_lst:
+        logger.info(f"AI {self.AID} receive event {trigger_event.event_name}, executable strategy {executable_lst}")
+
+        # 选择最高优先级的策略
+        chosen_strategy = [s for s in executable_lst if s.strategy_priority == max_priority]
+
+        weight_strategy_lst = [s for s in chosen_strategy if s.weight is not None]
+        # 没有权重表示一定会执行
+        winner_strategy_lst = [s for s in chosen_strategy if s.weight is None]
+        if len(weight_strategy_lst) > 0:
+            weight_lst = [s.weight for s in weight_strategy_lst]
+            winner_strategy_lst.append(random.choices(weight_strategy_lst, weights=weight_lst, k=1)[0])
+
+        for s in winner_strategy_lst:
             if s.strategy_priority == max_priority:
                 for action in s.actions:
                     if action.pre_loading(trigger_event, **factor_value):
@@ -82,3 +100,4 @@ class AIStrategyManager:
                 eval_strategy.remove(s)
                 self.strategy_trigger_map[trigger_event.event_name] = eval_strategy
                 # todo 上报给事件监听中心，取消trigger事件
+

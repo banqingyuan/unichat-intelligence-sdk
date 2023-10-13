@@ -2,12 +2,14 @@ import logging
 import random
 import threading
 import time
+from typing import Optional
 
 from common_py.model.scene import SceneEvent
 from common_py.utils.logger import wrapper_std_output, wrapper_azure_log_handler
 from memory_sdk.hippocampus import Hippocampus
 
 from action_strategy.action import Action
+from memory_sdk.memory_entity import UserMemoryEntity
 
 logger = wrapper_azure_log_handler(
     wrapper_std_output(
@@ -45,6 +47,7 @@ class AIActionStrategy:
         action_list = kwargs.get('actions')
         for action_dict in action_list:
             actions.append(Action(**action_dict))
+        self.weight: Optional[int] = kwargs.get('weight', None)
         self.actions = actions
         # 触发动作，比如，用户开启AI, 用户加入房间
         self.trigger_actions = kwargs.get('trigger_actions', None)
@@ -117,6 +120,7 @@ class AIActionStrategy:
             **factor_value,
         }
         try:
+
             exec(condition_script, input_params)
         except Exception as e:
             logger.exception(e)
