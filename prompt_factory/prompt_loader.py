@@ -31,19 +31,18 @@ condition_elements = ['left_variable', 'operator', 'right_value']
 
 class PromptLoader:
 
-    def parse_prompt(self, input_str: str, UID: str, prompt_tpl: dict, tracer: Tracer) -> str:
+    def parse_prompt(self, input_str: str, prompt_tpl: dict, tracer: Tracer, **kwargs) -> str:
         # with tracer.span(name="load_prompt_template_datasource"):
         #     variable_data = self._process_datasource(**params)
             # if "persona" in variable_data:
             #     variable_data.update(variable_data["persona"])
             #     variable_data.pop("persona")
-        with tracer.span(name="assemble_prompt") as span:
+        with tracer.span(name="assemble_prompt"):
             prompt_queue: queue.Queue = queue.Queue()
-
             with ThreadPoolExecutor(max_workers=5) as executor:
                 idx = 0
                 for tpl_name, tpl_block in prompt_tpl.items():
-                    executor.submit(self._get_prompt_block, idx, tpl_block, input_str, prompt_queue, UID)
+                    executor.submit(self._get_prompt_block, idx, tpl_block, input_str, prompt_queue, **kwargs)
                     idx += 1
             res_list = []
             while not prompt_queue.empty():
@@ -99,14 +98,14 @@ class PromptLoader:
         except Exception as e:
             logger.exception(e)
 
-    def _get_prompt_block(self, idx: int, tpl: dict, chat_input: str, q: queue.Queue, UID: str):
+    def _get_prompt_block(self, idx: int, tpl: dict, chat_input: str, q: queue.Queue, **kwargs):
         # todo 注意一下chat_input为空的处理
         try:
             fixed_tpl = tpl.get("tpl", None)
             fixed_res = ""
             try:
                 if fixed_tpl is not None:
-                    variables_res = self._get_variables_results(tpl, chat_input, UID)
+                    variables_res = self._get_variables_results(tpl, chat_input, **kwargs)
                     condition = tpl.get('condition', None)
                     if condition is not None:
                         condition_res = self._get_condition_results(condition, **variables_res)
@@ -213,7 +212,7 @@ class PromptLoader:
     #     top3_list.sort(key=lambda x: x[0], reverse=True)
     #     return top3_list
 
-    def _get_variables_results(self, tpl: dict, chat_input: str, UID: str) -> dict:
+    def _get_variables_results(self, tpl: dict, chat_input: str, **kwargs) -> dict:
         variables = tpl.get("variables", None)
         variable_res = {}
         if variables is not None:
@@ -224,7 +223,7 @@ class PromptLoader:
                     variable_res[key] = default_value
                 if 'datasource' in variable and 'property' in variable:
                     try:
-                        tmp_res = self._get_variable_from_datasource(variable['datasource'], variable['property'], UID)
+                        tmp_res = self._get_variable_from_datasource(variable['datasource'], variable['property'], **kwargs)
                         if tmp_res is not None:
                             variable_res[key] = tmp_res
                     except Exception as e:
@@ -406,27 +405,41 @@ class PromptLoader:
         #     else:
         #         raise Exception(f'left_variable {left_value} or right_value {right_value} has no operation or')
 
-    def _get_variable_from_datasource(self, datasource, prop, UID) -> str:
+    def _get_variable_from_datasource(self, datasource, prop, **kwargs) -> str:
+        owner_uid = kwargs.get('owner_uid', None)
+        speaker_uid = kwargs.get('speaker_uid', None)
+        if owner_uid is None or speaker_uid is None:
+            raise Exception(f"owner_uid {owner_uid} or speaker_uid {speaker_uid} not found in kwargs")
         # 数据源的配置化先不做了，编码在这里
         if datasource == 'AI_basic_info':
             instance = InstanceMgr().get_instance_info(self.AID)
             if prop == 'nickname':
                 return instance.get_nickname()
         elif datasource == 'AI_memory_of_user':
-            mem_entity = HippocampusMgr().get_hippocampus(self.AID).load_memory_of_user(UID)
-            if prop == 'user_name':
-                name = mem_entity.get_target_name()
-                if name == '':
-                    name = UserInfoMgr().get_instance_info(UID).get_username()
-                return name
-            elif prop == 'intimacy_level':
-                level = mem_entity.get_intimacy_level()
-                return level
+            if prop == 'owner_user_name' or 'owner_intimacy_level':
+                mem_entity = HippocampusMgr().get_hippocampus(self.AID).load_memory_of_user(owner_uid)
+                if prop == 'owner_user_name':
+                    name = mem_entity.get_target_name()
+                    if name == '':
+                        name = UserInfoMgr().get_instance_info(owner_uid).get_username()
+                    return name
+                if prop == 'owner_intimacy_level':
+                    return mem_entity.get_intimacy_level()
+
+            if prop == 'current_user_name' or 'current_intimacy_level':
+                mem_entity = HippocampusMgr().get_hippocampus(self.AID).load_memory_of_user(speaker_uid)
+                if prop == 'current_intimacy_level':
+                    return mem_entity.get_intimacy_level()
+                if prop == 'current_user_name':
+                    name = mem_entity.get_target_name()
+                    if name == '':
+                        name = UserInfoMgr().get_instance_info(speaker_uid).get_username()
+                    return name
         elif datasource == 'user_info':
-            user_info = UserInfoMgr().get_instance_info(UID)
-            if prop == 'user_name':
+            user_info = UserInfoMgr().get_instance_info(speaker_uid)
+            if prop == 'current_user_name':
                 return user_info.get_username()
-            elif prop == 'language':
+            elif prop == 'current_user_language':
                 return user_info.get_user_language()
 
 
