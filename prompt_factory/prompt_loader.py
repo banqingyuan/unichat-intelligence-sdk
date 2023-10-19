@@ -406,10 +406,6 @@ class PromptLoader:
         #         raise Exception(f'left_variable {left_value} or right_value {right_value} has no operation or')
 
     def _get_variable_from_datasource(self, datasource, prop, **kwargs) -> str:
-        owner_uid = kwargs.get('owner_uid', None)
-        speaker_uid = kwargs.get('speaker_uid', None)
-        if owner_uid is None or speaker_uid is None:
-            raise Exception(f"owner_uid {owner_uid} or speaker_uid {speaker_uid} not found in kwargs")
         # 数据源的配置化先不做了，编码在这里
         if datasource == 'AI_basic_info':
             instance = InstanceMgr().get_instance_info(self.AID)
@@ -417,6 +413,9 @@ class PromptLoader:
                 return instance.get_nickname()
         elif datasource == 'AI_memory_of_user':
             if prop == 'owner_user_name' or 'owner_intimacy_level':
+                owner_uid = kwargs.get('owner_uid', None)
+                if owner_uid is None:
+                    raise Exception(f"owner_uid {owner_uid} not found in kwargs")
                 mem_entity = HippocampusMgr().get_hippocampus(self.AID).load_memory_of_user(owner_uid)
                 if prop == 'owner_user_name':
                     name = mem_entity.get_target_name()
@@ -427,6 +426,9 @@ class PromptLoader:
                     return mem_entity.get_intimacy_level()
 
             if prop == 'current_user_name' or 'current_intimacy_level':
+                speaker_uid = kwargs.get('speaker_uid', None)
+                if speaker_uid is None:
+                    raise Exception(f"speaker_uid {speaker_uid} not found in kwargs")
                 mem_entity = HippocampusMgr().get_hippocampus(self.AID).load_memory_of_user(speaker_uid)
                 if prop == 'current_intimacy_level':
                     return mem_entity.get_intimacy_level()
@@ -436,6 +438,9 @@ class PromptLoader:
                         name = UserInfoMgr().get_instance_info(speaker_uid).get_username()
                     return name
         elif datasource == 'user_info':
+            speaker_uid = kwargs.get('speaker_uid', None)
+            if speaker_uid is None:
+                raise Exception(f"speaker_uid {speaker_uid} not found in kwargs")
             user_info = UserInfoMgr().get_instance_info(speaker_uid)
             if prop == 'current_user_name':
                 return user_info.get_username()
