@@ -37,8 +37,9 @@ class PromptLoader:
             # if "persona" in variable_data:
             #     variable_data.update(variable_data["persona"])
             #     variable_data.pop("persona")
-        with tracer.span(name="assemble_prompt"):
+        with tracer.span(name="assemble_prompt") as span:
             prompt_queue: queue.Queue = queue.Queue()
+
             with ThreadPoolExecutor(max_workers=5) as executor:
                 idx = 0
                 for tpl_name, tpl_block in prompt_tpl.items():
@@ -223,7 +224,8 @@ class PromptLoader:
                     variable_res[key] = default_value
                 if 'datasource' in variable and 'property' in variable:
                     try:
-                        tmp_res = self._get_variable_from_datasource(variable['datasource'], variable['property'], **kwargs)
+                        input_params = variable.get('input_params', {})
+                        tmp_res = self._get_variable_from_datasource(variable['datasource'], variable['property'], input_params, **kwargs)
                         if tmp_res is not None:
                             variable_res[key] = tmp_res
                     except Exception as e:
@@ -405,46 +407,33 @@ class PromptLoader:
         #     else:
         #         raise Exception(f'left_variable {left_value} or right_value {right_value} has no operation or')
 
-    def _get_variable_from_datasource(self, datasource, prop, **kwargs) -> str:
+    def _get_variable_from_datasource(self, datasource, prop, input_params: dict, **kwargs) -> str:
+        UID = kwargs.get('speaker_uid', None)
+        if 'UID' in input_params:
+            UID = kwargs.get(input_params.get('UID', ''), None)
+        if UID is None:
+            raise Exception(f"UID not found in input params {input_params} and kwargs {kwargs}")
+
         # 数据源的配置化先不做了，编码在这里
         if datasource == 'AI_basic_info':
             instance = InstanceMgr().get_instance_info(self.AID)
             if prop == 'nickname':
                 return instance.get_nickname()
         elif datasource == 'AI_memory_of_user':
-            if prop == 'owner_user_name' or 'owner_intimacy_level':
-                owner_uid = kwargs.get('owner_uid', None)
-                if owner_uid is None:
-                    raise Exception(f"owner_uid {owner_uid} not found in kwargs")
-                mem_entity = HippocampusMgr().get_hippocampus(self.AID).load_memory_of_user(owner_uid)
-                if prop == 'owner_user_name':
-                    name = mem_entity.get_target_name()
-                    if name == '':
-                        name = UserInfoMgr().get_instance_info(owner_uid).get_username()
-                    return name
-                if prop == 'owner_intimacy_level':
-                    return mem_entity.get_intimacy_level()
-
-            if prop == 'current_user_name' or 'current_intimacy_level':
-                speaker_uid = kwargs.get('speaker_uid', None)
-                if speaker_uid is None:
-                    raise Exception(f"speaker_uid {speaker_uid} not found in kwargs")
-                mem_entity = HippocampusMgr().get_hippocampus(self.AID).load_memory_of_user(speaker_uid)
-                if prop == 'current_intimacy_level':
-                    return mem_entity.get_intimacy_level()
-                if prop == 'current_user_name':
-                    name = mem_entity.get_target_name()
-                    if name == '':
-                        name = UserInfoMgr().get_instance_info(speaker_uid).get_username()
-                    return name
+            mem_entity = HippocampusMgr().get_hippocampus(self.AID).load_memory_of_user(UID)
+            if prop == 'user_name':
+                name = mem_entity.get_target_name()
+                if name == '':
+                    name = UserInfoMgr().get_instance_info(UID).get_username()
+                return name
+            elif prop == 'intimacy_level':
+                level = mem_entity.get_intimacy_level()
+                return level
         elif datasource == 'user_info':
-            speaker_uid = kwargs.get('speaker_uid', None)
-            if speaker_uid is None:
-                raise Exception(f"speaker_uid {speaker_uid} not found in kwargs")
-            user_info = UserInfoMgr().get_instance_info(speaker_uid)
-            if prop == 'current_user_name':
+            user_info = UserInfoMgr().get_instance_info(UID)
+            if prop == 'user_name':
                 return user_info.get_username()
-            elif prop == 'current_user_language':
+            elif prop == 'language':
                 return user_info.get_user_language()
 
 
