@@ -20,6 +20,7 @@ AI_memory_target_type = "target_type"
 AI_memory_intimacy_point = "intimacy_point"
 AI_memory_intimacy_level = "intimacy_level"
 AI_memory_target_nickname = "target_nickname"
+AI_memory_user_language = "user_language"
 AI_memory_met_times = "met_times"
 AI_memory_last_met_timestamp = "last_met_timestamp"
 AI_memory_topic_mentioned_last_time = "topic_mentioned_last_time"
@@ -53,7 +54,7 @@ class UserMemoryEntity:
         self.time_duration_since_last_met: Optional[int] = None  # 距离上次见面的时间间隔，单位秒
         self.last_met_timestamp: Optional[int] = None  # 上次见面的时间戳
         self.topic_mentioned_last_time: Optional[str] = None  # 上次提到的话题
-
+        self.user_language = ""
         self.intimacy_point = 0
         self.intimacy_level = 'just_met'
 
@@ -87,6 +88,7 @@ class UserMemoryEntity:
         self.topic_mentioned_last_time = result.get(AI_memory_topic_mentioned_last_time, None)
         self.intimacy_point = result.get(AI_memory_intimacy_point, 0)
         self.intimacy_level = result.get(AI_memory_intimacy_level, 'just_met')
+        self.user_language: str = result.get(AI_memory_user_language, '')
 
     def get_target_name(self):
         return self.target_nickname
@@ -95,6 +97,14 @@ class UserMemoryEntity:
         self.target_nickname = name
         self._element_stash(AI_memory_target_nickname, name)
         self.save_stash()
+
+    def set_user_language(self, language_code: str):
+        self.user_language = language_code
+        self._element_stash(AI_memory_user_language, language_code)
+        self.save_stash()
+
+    def get_user_language(self) -> str:
+        return self.user_language
 
     def get_intimacy_point(self) -> int:
         return int(self.intimacy_point if self.intimacy_point != '' else 0)
