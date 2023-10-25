@@ -241,7 +241,7 @@ class PromptLoader:
                         content_field = vdb_info['content_field']
                         if model == 'UnichatKnowledge':
                             res = query_vector_info(UnichatKnowledge, chat_input, meta_filter, top_k, threshold=threshold)
-                            if res is None:
+                            if res is None or len(res) == 0:
                                 continue
                         else:
                             logger.error(f"model {model} not supported")
