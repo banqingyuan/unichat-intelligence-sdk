@@ -103,6 +103,20 @@ class IntimacyMgr:
                 logging.exception(e)
                 continue
 
+    # def intimacy_display(self, UID: str, AID: str) -> Dict[str, int]:
+    #     """
+    #     亲密度展示
+    #     :return: 亲密度展示
+    #     """
+    #     try:
+    #         intimacy_display = {}
+    #         for key, value in self.redis_client.redis_intimacy_display.items():
+    #             intimacy_display[key] = value
+    #         return intimacy_display
+    #     except Exception as e:
+    #         logger.error(f'intimacy display error: {e}')
+    #         return {}
+
     def _combine_chat_time_ticket(self):
         combined_uuid_lst = []
         # 合并聊天时长的单据
