@@ -17,6 +17,11 @@ logger = wrapper_azure_log_handler(
     )
 )
 
+JUST_MET = 'just_met'
+CASUAL_FRIEND = 'casual_friend'
+SPECIAL_FRIEND = 'special_friend'
+BEST_FRIEND = 'best_friend'
+ROMANTIC_PARTNER = 'romantic_partner'
 
 class IntimacyMgr:
     """
@@ -32,11 +37,11 @@ class IntimacyMgr:
     }
 
     support_level = {
-        'just_met': 1,
-        'casual_friend': 2,
-        'special_friend': 3,
-        'best_friend': 4,
-        'romantic_partner': 4,
+        JUST_MET: 1,
+        CASUAL_FRIEND: 2,
+        SPECIAL_FRIEND: 3,
+        BEST_FRIEND: 4,
+        ROMANTIC_PARTNER: 4,
     }
 
     def __init__(self, need_init: bool = False):
@@ -62,12 +67,12 @@ class IntimacyMgr:
         try:
             entity = HippocampusMgr().get_hippocampus(AID).load_memory_of_user(UID)
             if not entity:
-                return 'just_met'
+                return JUST_MET
             intimacy_level = entity.get_intimacy_level()
             return intimacy_level
         except Exception as e:
             logger.error(f'get intimacy level error: {e}')
-            return 'just_met'
+            return JUST_MET
 
     def get_intimacy_point(self, UID: str, AID: str) -> int:
         """
@@ -85,6 +90,33 @@ class IntimacyMgr:
         except Exception as e:
             logger.error(f'get intimacy point error: {e}')
             return 0
+
+    def get_intimacy_info(self, UID: str, AID: str) -> (int, str, int, int):
+        try:
+            entity = HippocampusMgr().get_hippocampus(AID).load_memory_of_user(UID)
+            entity.load_memory()
+            if not entity:
+                return 0, JUST_MET, 0, 0
+            intimacy_point = entity.get_intimacy_point()
+            intimacy_level = entity.get_intimacy_level()
+            level = self.support_level[intimacy_level]
+            if level == 4:
+                intimacy_needed_to_next_level = 2000
+            else:
+                intimacy_needed_to_next_level = self.intimacy_level2point[level + 1] - self.intimacy_level2point[level]
+            intimacy_got_this_level = intimacy_point - self.intimacy_level2point[level]
+
+            if intimacy_got_this_level > intimacy_needed_to_next_level:
+                intimacy_got_this_level = intimacy_needed_to_next_level
+
+            if intimacy_got_this_level < 0:
+                intimacy_got_this_level = 0
+
+            return intimacy_point, intimacy_level, intimacy_needed_to_next_level, intimacy_got_this_level
+        except Exception as e:
+            logger.error(f'get intimacy info error: {e}')
+            return 0, JUST_MET, 0, 0
+
 
     def _add_in_stash(self, intimacy_ticket: IntimacyBase):
         intimacy_key = _assemble_key(intimacy_ticket)
@@ -200,13 +232,14 @@ class IntimacyMgr:
                 *['source_id', 'target_id']
             )
 
+            # todo 亲密度的实现还太糙了
             for level, point in self.intimacy_level2point.items():
                 if new_intimacy_point >= point > old_intimacy_point:
                     tmp_relation_mapping = {
-                        1: 'just_met',
-                        2: 'casual_friend',
-                        3: 'special_friend',
-                        4: 'best_friend'
+                        1: JUST_MET,
+                        2: CASUAL_FRIEND,
+                        3: SPECIAL_FRIEND,
+                        4: BEST_FRIEND
                     }
                     new_relation = tmp_relation_mapping[level]
                     self._upgrade_intimacy_level(new_relation, mem_entity)

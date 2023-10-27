@@ -1,6 +1,7 @@
 import json
 import logging
 import queue
+import re
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Dict
@@ -68,7 +69,8 @@ class PromptLoader:
             with ThreadPoolExecutor(max_workers=5) as executor:
                 for message_input in inputs:
                     message_input = filter_brackets(message_input)
-                    for item in message_input.split('.'):
+                    result = re.split(r'[;.,?!]', message_input)
+                    for item in result:
                         executor.submit(self._query_lui_library_from_pgvector, item, AI_info.type, access_level, q)
             while not q.empty():
                 res = q.get()
@@ -446,4 +448,3 @@ class PromptLoader:
         self.AID = AID
         self.redis_client = RedisClient()
         self.mongodb_client = MongoDBClient()
-
