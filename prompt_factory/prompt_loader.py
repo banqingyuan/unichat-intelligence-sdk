@@ -93,7 +93,7 @@ class PromptLoader:
                     {"access_level": {"$in": access_level}}
                 ]},
                 top_k=3,
-                threshold=0.9,
+                threshold=0.85,
             )
             results = [LUIUsecaseInfo(**item) for item in results]
             for result in results:
