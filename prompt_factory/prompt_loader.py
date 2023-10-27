@@ -75,6 +75,7 @@ class PromptLoader:
             while not q.empty():
                 res = q.get()
                 lui_results.update(res)
+            logger.debug(f"recall lui results: {[key for key in lui_results.keys()]}")
             return lui_results
 
     def _query_lui_library_from_pgvector(self,
