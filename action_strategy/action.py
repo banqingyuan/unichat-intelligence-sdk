@@ -1,13 +1,9 @@
 import logging
 import time
 from typing import Any, Dict
-
-from common_py.model.scene import SceneEvent
+from common_py.model.base import BaseEvent
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
-
 from memory_sdk.event_block import load_block_from_mongo
-from memory_sdk.hippocampus import Hippocampus
-
 from opencensus.trace import execution_context
 from pydantic import BaseModel
 
@@ -41,8 +37,9 @@ class Action(BaseModel):
     queuing_time: int = 1
     active_time: int = 0
     sharing_params: Dict = {}
+    next_node_name: str = None
 
-    def pre_loading(self, trigger_event: SceneEvent, **factor_value) -> bool:
+    def pre_loading(self, trigger_event: BaseEvent, **factor_value) -> bool:
         if not self.action_script or self.action_script == '':
             return False
         input_params = {

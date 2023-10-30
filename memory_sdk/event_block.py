@@ -317,7 +317,7 @@ def load_all_block_from_mongo() -> List[EventBlock]:
         del item['origin_event']
         block_item = EventBlock(**item)
         block_item.origin_event = events
-        if block_item.create_timestamp > 1697512785:
+        if block_item.create_timestamp > 1698291261:
             block_lst.append(block_item)
     return block_lst
 
@@ -333,24 +333,24 @@ if __name__ == '__main__':
     for AID, block_lst in AI_dict.items():
         AI_dict[AID] = sorted(block_lst, key=lambda x: x.create_timestamp, reverse=True)
 
-    last_time_lst = []
-    for AID, block_lst in AI_dict.items():
-        for block in block_lst:
-            last_time = int(block.origin_event[-1].occur_time) - int(block.origin_event[0].occur_time)
-            last_time_lst.append(last_time)
-    print(last_time_lst)
+    # last_time_lst = []
+    # for AID, block_lst in AI_dict.items():
+    #     for block in block_lst:
+    #         last_time = int(block.origin_event[-1].occur_time) - int(block.origin_event[0].occur_time)
+    #         last_time_lst.append(last_time)
+    # print(last_time_lst)
 
     # save as csv
-    # with open('AI_memory_block.csv', 'w', encoding='utf-8') as f:
-    #     writer = csv.writer(f)
-    #     writer.writerow(['AID', 'role: speaker', 'message', 'occur time'])
-    #     for AID, block_lst in AI_dict.items():
-    #         for block in block_lst:
-    #             for event in block.origin_event:
-    #                 if isinstance(event, ConversationEvent):
-    #                     if event.role == 'AI' and AID == '':
-    #                         AID = event.speaker
-    #                     formatted_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(float(event.occur_time)))
-    #                     writer.writerow([AID, f"{event.role}: {event.speaker_name}", event.message, formatted_time])
-    #             writer.writerow(['', '', ''])
+    with open('AI_memory_block.csv', 'w', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        writer.writerow(['AID', 'role: speaker', 'message', 'occur time'])
+        for AID, block_lst in AI_dict.items():
+            for block in block_lst:
+                for event in block.origin_event:
+                    if isinstance(event, ConversationEvent):
+                        if event.role == 'AI' and AID == '':
+                            AID = event.speaker
+                        formatted_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(float(event.occur_time)))
+                        writer.writerow([AID, f"{event.role}: {event.speaker_name}", event.message, formatted_time])
+                writer.writerow(['', '', ''])
 
