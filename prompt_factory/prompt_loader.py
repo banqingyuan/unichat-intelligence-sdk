@@ -71,6 +71,8 @@ class PromptLoader:
                     message_input = filter_brackets(message_input)
                     result = re.split(r'[;.,?!]', message_input)
                     for item in result:
+                        if len(item) < 2:
+                            continue
                         executor.submit(self._query_lui_library_from_pgvector, item, AI_info.type, access_level, q)
             while not q.empty():
                 res = q.get()

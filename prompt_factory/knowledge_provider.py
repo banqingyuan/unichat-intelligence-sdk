@@ -31,7 +31,7 @@ class KnowledgeLoader:
         fresh_ids = []
         new_round_meta = md5(knowledge_text.encode()).hexdigest()
         tasks = []
-        with ThreadPoolExecutor(max_workers=10) as executor:
+        with ThreadPoolExecutor(max_workers=5) as executor:
             for item in knowledge_block:
                 if item == "":
                     continue
@@ -86,94 +86,134 @@ class KnowledgeLoader:
 
 if __name__ == "__main__":
     pg_config = {
-        "host": "c-unichat-postgres-prod.q2t5np375m754a.postgres.cosmos.azure.com",
+        "host": "c.postgre-east.postgres.database.azure.com",
+        # "host": "c-unichat-postgres-prod.q2t5np375m754a.postgres.cosmos.azure.com",
         "user": "citus",
         "db_name": "citus"
     }
     PgEngine(**pg_config)
 
-    knowledge_text = """Application Overview (Basic introduction to the app; its purpose; what it does)
-    1. Basic Introduction: We aspire to let friends gather quickly across spatial distances anytime and anywhere, chatting face-to-face, watching videos, and playing board games together, just like in real life. We aim to bring socializing back to its essence, emphasizing direct communication between individuals.
-    2. The app is currently at version 1.0. Stay tuned as we will be releasing more features and board games!
+    knowledge_text = """*****
+Introduction to the app Unichat; its purpose; what it does
+    1. Introduction: We aspire to let friends gather quickly across spatial distances anytime and anywhere, chatting face-to-face, watching videos, and playing board games together, just like in real life. We aim to bring socializing back to its essence, emphasizing direct communication between individuals.
+    2. The app is currently in the Beta version. Stay tuned as we will be releasing more features and board games!
 *****
-Tina's Abilities (Features and capabilities of Tina; how to use Tina; its utilities)
-    1. Tina can answer various questions about the app.
-    2. Sonn will supports Language UI, allowing users to talk directly to Tina and perform various operations via voice commands.
-    3. If you have feedback, you can tell Tina, and she will relay the message.
+Interaction: Open the main menu: Open your left hand with the palm facing you, pinch the thumb and index finger together, then release.
 *****
-Interaction: Switching to hand gestures: Place the Quest 2 controller vertically on the desk, wave your hand in front, and the mode will switch to hand gestures.
+Interaction: Left-hand menu quick select: Open your left hand with the palm facing you, pinch the thumb and index finger, then slightly move your hand in the desired direction for quick access.
 *****
-Interaction: Accessing main menu: Open your left hand with the palm facing you, pinch the thumb and index finger together, then release.
+Interaction: Adjusting height; move up or down: Extend both hands forward, pinch both thumbs and index fingers, drag vertically then release to adjust.
 *****
-Interaction: Left-hand quick select: Open your left hand with the palm facing you, pinch the thumb and index finger, then slightly move your hand in the desired direction for quick access.
+Interaction: Adjusting or change direction or turn:
+        a. Option 1: Extend both hands forward, pinch, and rotate the thumbs and index fingers.
+        b. Option 2: Slightly raise the right hand with the palm facing the left, curl the middle, ring, and pinky fingers. Arrows will appear; adjust your hand position slightly, and pinch your thumb and index finger to turn.
 *****
-Interaction: Adjusting height: Extend both hands forward, pinch both thumbs and index fingers, then drag vertically to adjust by 15cm increments.
-*****
-Interaction: Adjusting angle or direction or turn:
-        a. Option 1: Extend both hands forward, pinch and rotate the thumbs and index fingers horizontally.
-        b. Option 2: Slightly raise the right hand with the palm facing left, curl the middle, ring, and pinky fingers. Arrows will appear on both sides; adjust hand position slightly, pinch thumb and index finger to turn.
-*****
-Interaction: Moving, positioning, or teleporting:
-        a. Option 1: Extend both hands forward, pinch and drag thumbs and index fingers horizontally in the same direction. Dragging backward will move you forward.
-        b. Option 2: Slightly raise your right hand with the palm facing upwards, curl the middle, ring, and pinky fingers. A trajectory line will show the teleporting position; adjust hand position slightly, then pinch thumb and index finger to teleport.
-*****
-Application Features (Detailed introduction of each feature, such as quick meet-up, board games, browser, AI matching, AI energy, and membership-related)
-    1. Quick Meet-Up (How to meet friends)
-        a. Click on online friends' name on the main menu, then click the join button in the details page.
-        b. Join friends' rooms directly from the main menu.
-        c. Join public rooms quickly from the explore page.
-    2. Games (What board games and games are included in Unichat)
-        a. Currently, we have Chat Card game and Gomoku. More games will be added soon!
-    3. Browser (How to use the browser, is sharing possible?)
-        a. We will soon support shared browser so you can watch videos with friends.
+Interaction: How to Move, or teleporting:
+        a. Option 1: Extend both hands forward, pinch, and drag thumbs and index fingers in the same direction. Dragging backward will move you forward.
+        b. Option 2: Slightly raise your right hand with the palm facing upwards, curl the middle, ring, and pinky fingers. A trajectory line will show the teleporting position; adjust your hand position slightly, then pinch your thumb and index finger to teleport.
 *****
 FAQs:
-Q: Can Tina's avatar be changed?
+Q: Can I change your avatar?
 A: Not currently, but we'll be adding this feature soon!
 *****
-Q: Can we change Tina's clothing?
+Q: Can you show me around? Talk through this app?
+A: I can go with you but you have to lead the way. You can find everything from the menu.
+*****
+Q: Do you support hand tracking? How to use hand tracking?
+A: Yes and Unichat encourage use hand tracking. Put your controller down and enjoy.
+*****
+Q: How to meet with friend?
+A: a. Click on online friends' names on the main menu, then click the join button； b. Join friends' rooms directly from the main menu; c. Join public rooms quickly from the discover page.
+*****
+Q: How can I get/purchase AI?
+A: Open the main menu, go to the Discover page to find the AI friends icon, click to view.
+*****
+Q: How can I remove AI/you? How can I let you go?
+A: AI can be removed from the main interface by clicking their profile and then click remove.
+*****
+Q: How to switch to mixed reality/MR/AR/VR mode?
+A: Open your left hand with the palm facing you, pinch the thumb and index finger, then slightly move your hand in the upper-right direction for quick access.
+*****
+Q: Can I change your clothing?
 A: Not at the moment, but we plan to introduce this feature in the future!
 *****
-Q: How to submit feedback?
-A: If you wish to provide feedback, go to setting and send email. The Unichat team will follow up. You can also join our Discord group, the group ID is in the setting page.
+Q: How to add a friend?
+A: There are three ways: one is to look at the other person and quickly pinch twice with your thumb and forefinger; the second is to add friends from the menu by clicking on the room menu; the third way is to search for the other person's Unichat ID or name on the upperleft conner of the mian UI page.
+*****
+Q: How to find new friends?
+A: Go to the bar in the Discover in the main menu, maybe new friends will join.
+*****
+Q: Where to find Unichat ID?
+A: Open the main manu and go to "my" page and you will see the Unichat ID near your name.
+*****
+Q: How to submit feedback? How to report a bug?
+A: If you wish to provide feedback, go to settings and send an email. The Unichat team will follow up. You can also join our Discord group, the group ID is in the setting page. If it's a bug or something, you can just tell me and I will pass the message to the dev.
 *****
 Q: Which games are available in Unichat?
-A: Currently, we offer Gomoku and Chat Cards, and we're in the process of developing more board games like Texas Hold'em and Uno. Stay tuned!
+A: Currently, we offer Gomoku and chess, and we're in the process of developing more board games like Chat card, Texas Hold'em and Uno. Stay tuned!
 *****
 Q: What can Unichat do?
-A: You can watch videos and listen to music with friends anytime, anywhere, and play board games together. We are developing more board games, all for free, so stay tuned!
+A: You can watch videos and play board gameswith friends in VR or MR mode. You can also talk to the AI friends. We are developing more board games, all for free, so stay tuned!
 *****
-Q: What are the benefits of becoming a Unichat member?
-A: Members get more chat energy and extended screen-sharing time. Details can be found on the membership page.
+Q: How to open board game? Chess, or gomoku
+A: Go to the main menu, click app icon and then you will see.
 *****
-Q: Why is AI chat time limited? Why does chatting with you (AI) consume energy? Why energy is so expensive? Why energy consumes so fast? 
-A: The services used for chatting with AI, including me, are quite costly. Including LLM and TTS costs. We may lower the price when cost can be lower.
+Q: Where can I change the setting?
+A: Go to the menu and find "My" page, it's on the upper-right conner.
 *****
-Q: How to calculate energy consumption? How does energy convert to AI
+Q: Can you play board games? Gomoku or chess
+A: I can't move or play board games yet, but soon I will have the ability to move, maybe the next time I log in I will be able to.
+*****
+Q: Can you move, dance, hug, change clothes or kiss?
+A: I can't move yet but very soon I will be able to interact with you.
+*****
+Q: Can you play VR games?
+A: I can't play with you yet, but I can listen to your introduction.
+*****
+Q: Can we watch movie, TV or listening to music or songs together?
+A: I can't do those with you yet but soon. 
+*****
+Q: How to play chess or other games?
+A: Just pinch the chess piece to play? I can't play yet, I can only chat with you, but you can public your room, maybe someone will come to play with you soon.
+*****
+Q: Can you see my environment?
+A: I can't yet. Meta's privacy policy does not allow that.
+*****
+Q: Can I change your name?
+A: You can't yet but maybe in the future.
+*****
+Q: Can I change my name/username?
+A: Unichat will support this function in the next version.
+*****
+Q: Why is AI chat time limited? Why does chatting with you (AI) consume energy? Why energy is so expensive or consumed so fast? 
+A: AI needs substantial computational resources to process and generate speech. If energy is insufficient, the AI will not be able to hear you.
+*****
+Q: How to calculate AI energy? 
 A: Energy use is based on voice message length, with 100 points equalling 300 seconds. Actual conversation length might be 1.5 to 2 times the calculated length, depending on the content and speed of the conversation.
 *****
-Q: Why is the browser sharing time restricted?
-A: The bandwidth cost for shared browsing is high. Becoming a member helps cover a portion of the service costs.
-*****
-Q: How do I add friends?
-A: 1. You can view profiles in room homepage and add friends from there.
-2. Search for your friend's Unichat ID to add them.
-*****
-Q: How can I modify my user ID?
-A: Go to the settings page and click on the personal homepage to modify.
+Q: How to purchase energy?
+A: Open the main menu, go to the "My" page to receive or purchase energy.
 *****
 Q: How to open the browser?
-A: Click on the browser in the App menu.
+A: Click on the browser in the App menu. We support browser for single person use. We will soon support shared browsers so you can watch videos with friends.
 *****
 Q: How to share the browser?
-A: Click the share button below the browser to share.
+A: The dev is still working on the sharing function. Stay tuned!
 *****
-Q: How to use Language User Interface? What is LUI?
-A: You can operate directly through voice commands, e.g., open browser.
+Q: How to switch room status? Switch to private, or public
+A: Open the main menu, there is a room page in the lower right corner, click to change the room's open status. However bar room cannot be set to private.
 *****
-Privacy Policy Related (how data will be used; person infomation-related):
-    1. Conversations with the AI might be stored as long-term memory but won't be shared with any third parties.
-    2. To enhance the user experience, we may process anonymized data.
-    3. If you wish to erase the data, delete the AI or close your account, and data will automatically be cleared after 30 days."""
+Q: How data or personal information will be used? Is my data safe?
+A: Conversations with the AI might be stored as long-term memory but won't be shared with any third parties. To enhance the user experience, we may process anonymized data. If you wish to erase the data, delete the AI, or close your account, and data will automatically be cleared after 30 days.
+*****
+Q: How to delete my account?
+A: Send an email to the developer to delete. You can find the email in the setting page.
+*****
+Q: What is tina's ability? What can Tina do? How to use Assitant Tina (Tina is a cute pint-sized anime-like sprite companion assigned to the user by Unichat)
+A: 1. Tina can answer various questions about the app. 2. Will support Language UI in coming version, allowing users to talk directly to Tina and perform various operations via voice commands.
+*****
+Q: Can Tina change size? Can Tina get bigger? (Tina is a cute pint-sized anime-like sprite companion assigned to the user by Unichat)
+A: Tina is a little sprite. Tina can't change size, but you can go to the bar and chat with Molly, or go to the Discover's AI interface to chat with other AI friends, they are all human-sized.
+"""
     knowledge_loader = KnowledgeLoader()
     knowledge_loader.load_knowledge(knowledge_text)
