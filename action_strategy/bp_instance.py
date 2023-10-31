@@ -2,7 +2,7 @@ import json
 import logging
 import queue
 import re
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 from common_py.ai_toolkit.openAI import ChatGPTClient, Message
 from common_py.model.base import BaseEvent
@@ -30,6 +30,7 @@ class BluePrintInstance:
             self.current_node = self._construct_blue_print(bp_script)
             self.action_queue = action_queue
             self.llm_client = ChatGPTClient(temperature=0)
+            self.event_context: List[BaseEvent] = []
         except KeyError as e:
             logger.error(f"Missing key in blue print script: {e}")
             raise Exception("Missing key in blue print script")
@@ -68,18 +69,23 @@ class BluePrintInstance:
         return an
 
     def execute(self, event: BaseEvent) -> str:
-        node = self.nodes_collection.get(self.current_node)
-
-        if isinstance(node, RouterNode):
-            next_node_name = self._execute_router_script_node(node, event)
-            next_node = self.nodes_collection.get(next_node_name, None)
-            if isinstance(next_node, RouterNode):
-                self.current_node = next_node_name
-                return self.execute(event)
-            elif isinstance(next_node, Action):
-                if next_node.pre_loading(event):
-                    self.action_queue.put((next_node, event))
-                    return next_node.next_node_name
+        try:
+            node = self.nodes_collection.get(self.current_node)
+            if isinstance(node, RouterNode):
+                next_node_name = self._execute_router_script_node(node, event)
+                next_node = self.nodes_collection.get(next_node_name, None)
+                if isinstance(next_node, RouterNode):
+                    self.current_node = next_node_name
+                    return self.execute(event)
+                elif isinstance(next_node, Action):
+                    if next_node.pre_loading(event):
+                        self.action_queue.put((next_node, event))
+                        return next_node.next_node_name
+        except Exception as e:
+            # todo 退出蓝图
+            logger.exception(e)
+        finally:
+            self.event_context.append(event)
 
     def execute_router(self, node: RouterNode, trigger_event: BaseEvent, **factor_values) -> str:
         if isinstance(trigger_event, ConversationEvent):
@@ -107,13 +113,15 @@ class BluePrintInstance:
 
     def _execute_llm_router(self, node: RouterNode, trigger_event: BaseEvent, **factor_values) -> str:
         mission_purpose = self.description
-        known_conditions = 'todo'
+        known_conditions = ''
+        for event in self.event_context:
+            known_conditions += event.description() + '\n'
         child_nodes = node.child_node
-        expected_output = ''
         next_action_options = ''
+        expected_output = ', '.join([node for node in child_nodes])
         for child_node in child_nodes:
             node = self.nodes_collection[child_node]
-            expected_output += f"{node.name},"
+            # expected_output += f"{node.name},"
             next_action_options += f"""\nnode name: {node.name} \n node description: {node.description}\n"""
 
         prompt = const.router_prompt.format(mission_purpose=mission_purpose,

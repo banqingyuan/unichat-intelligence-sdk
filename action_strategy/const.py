@@ -10,5 +10,6 @@ router_prompt = """
 {next_action_options}
 
 ##### Expected Output
-{expected_output}
+Please select one of the given options and surround the output with *, for example *OptionName*
+Given options: {expected_output}
 """
