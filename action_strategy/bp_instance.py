@@ -23,17 +23,20 @@ logger = wrapper_azure_log_handler(
 
 class BluePrintInstance:
 
-    def __init__(self, action_queue: queue.Queue, bp_script):
+    def __init__(self, bp_script):
         try:
             self.name = bp_script['name']
             self.description = bp_script['description']
-            self.current_node = self._construct_blue_print(bp_script)
-            self.action_queue = action_queue
+            self.current_node_name = self._construct_blue_print(bp_script)
+            self.action_queue: Optional[queue.Queue] = None
             self.llm_client = ChatGPTClient(temperature=0)
             self.event_context: List[BaseEvent] = []
         except KeyError as e:
             logger.error(f"Missing key in blue print script: {e}")
             raise Exception("Missing key in blue print script")
+
+    def init(self, action_queue: queue.Queue):
+        self.action_queue = action_queue
 
     def _construct_blue_print(self, bp_script: Dict) -> str:
         """
@@ -70,17 +73,23 @@ class BluePrintInstance:
 
     def execute(self, event: BaseEvent) -> str:
         try:
-            node = self.nodes_collection.get(self.current_node)
+            node = self.nodes_collection.get(self.current_node_name)
             if isinstance(node, RouterNode):
                 next_node_name = self._execute_router_script_node(node, event)
                 next_node = self.nodes_collection.get(next_node_name, None)
                 if isinstance(next_node, RouterNode):
-                    self.current_node = next_node_name
+                    self.current_node_name = next_node_name
                     return self.execute(event)
                 elif isinstance(next_node, Action):
-                    if next_node.pre_loading(event):
-                        self.action_queue.put((next_node, event))
-                        return next_node.next_node_name
+                    # 在蓝图中进入Action节点，不需要前置判断
+                    # if next_node.pre_loading(event):
+                    self.action_queue.put((next_node, event))
+                    self.current_node_name = next_node.next_node_name
+                    return next_node.next_node_name
+            if isinstance(node, Action):
+                self.action_queue.put((node, event))
+                self.current_node_name = node.next_node_name
+                return node.next_node_name
         except Exception as e:
             # todo 退出蓝图
             logger.exception(e)
