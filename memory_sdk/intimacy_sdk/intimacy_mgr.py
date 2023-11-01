@@ -32,8 +32,8 @@ class IntimacyMgr:
     intimacy_level2point = {
         1: 0,
         2: 40,
-        3: 500,
-        4: 1300,
+        3: 440,
+        4: 1240,
     }
 
     support_level = {
