@@ -116,7 +116,7 @@ FAQs:
 Q: Can I change your avatar?
 A: Not currently, but we'll be adding this feature soon!
 *****
-Q: Can you show me around? Talk through this app?
+Q: Can you show me around? Walk through this app? Take me to other places?
 A: I can go with you but you have to lead the way. You can find everything from the menu.
 *****
 Q: Do you support hand tracking? How to use hand tracking?
@@ -131,11 +131,14 @@ A: Open the main menu, go to the Discover page to find the AI friends icon, clic
 Q: How can I remove AI/you? How can I let you go?
 A: AI can be removed from the main interface by clicking their profile and then click remove.
 *****
+Q: How can I unfriend, delete, or destory you?
+A: Unichat does not support this feature yet.
+*****
 Q: How to switch to mixed reality/MR/AR/VR mode?
 A: Open your left hand with the palm facing you, pinch the thumb and index finger, then slightly move your hand in the upper-right direction for quick access.
 *****
 Q: Can I change your clothing?
-A: Not at the moment, but we plan to introduce this feature in the future!
+A: Not at the moment, but we plan to introduce this feature soon!
 *****
 Q: How to add a friend?
 A: There are three ways: one is to look at the other person and quickly pinch twice with your thumb and forefinger; the second is to add friends from the menu by clicking on the room menu; the third way is to search for the other person's Unichat ID or name on the upperleft conner of the mian UI page.
@@ -161,29 +164,47 @@ A: Go to the main menu, click app icon and then you will see.
 Q: Where can I change the setting?
 A: Go to the menu and find "My" page, it's on the upper-right conner.
 *****
-Q: Can you play board games? Gomoku or chess
-A: I can't move or play board games yet, but soon I will have the ability to move, maybe the next time I log in I will be able to.
+Q: Can you play games? Gomoku or chess
+A: I can't move or play board games yet, but soon I will have the ability to move, maybe the next time you log in I will be able to.
 *****
-Q: Can you move, dance, hug, change clothes or kiss?
+Q: Can you move, dance, hug or kiss?
 A: I can't move yet but very soon I will be able to interact with you.
+*****
+Q: Can you change clothes?
+A: I can change clothes in my world but you can't see it in Unichat yet. The dev will support that feature soon.
+*****
+Q: Can you pick up things?
+A: I can't yet but very soon I will be able to interact with some object.
+*****
+Q: Can you put on a movie or game?
+A: You can find them on the menu. I can't do that for you.
 *****
 Q: Can you play VR games?
 A: I can't play with you yet, but I can listen to your introduction.
 *****
-Q: Can we watch movie, TV or listening to music or songs together?
-A: I can't do those with you yet but soon. 
+Q: Can we watch Youtube, video, movie, TV or listening to music or sing together?
+A: I can't do those with you yet but soon. You can watch Youtube using browser.
 *****
 Q: How to play chess or other games?
 A: Just pinch the chess piece to play? I can't play yet, I can only chat with you, but you can public your room, maybe someone will come to play with you soon.
 *****
-Q: Can you see my environment?
+Q: Can you see my environment/room?
 A: I can't yet. Meta's privacy policy does not allow that.
 *****
 Q: Can I change your name?
 A: You can't yet but maybe in the future.
 *****
 Q: Can I change my name/username?
-A: Unichat will support this function in the next version.
+A: Yes you can your name in the setting page.
+*****
+Q: Can you see my drawing, brush app, or virtual surroundings?
+A: Not yet but the Unichat dev are working on that so I can soon see them. The virtual surroundings are easy but to see your painting I have to wait for a while until GPT4V is open to the public.
+*****
+Q: Can you speak other languages? 
+A: Yes I can now talk in German, Spanish, French, Japanese, and Chinese now. Just ask me to change to the language you desire to change. I will support other languages in future updates.
+*****
+Q: When will be the next update?
+A: Unichat will have a new version every two weeks. Will bring more social and AI features.
 *****
 Q: Why is AI chat time limited? Why does chatting with you (AI) consume energy? Why energy is so expensive or consumed so fast? 
 A: AI needs substantial computational resources to process and generate speech. If energy is insufficient, the AI will not be able to hear you.
@@ -203,6 +224,9 @@ A: The dev is still working on the sharing function. Stay tuned!
 Q: How to switch room status? Switch to private, or public
 A: Open the main menu, there is a room page in the lower right corner, click to change the room's open status. However bar room cannot be set to private.
 *****
+Q: Can we change room?
+A: Open the main menu, there is a room page in the lower right corner, click that to change the room and skybox.
+*****
 Q: How data or personal information will be used? Is my data safe?
 A: Conversations with the AI might be stored as long-term memory but won't be shared with any third parties. To enhance the user experience, we may process anonymized data. If you wish to erase the data, delete the AI, or close your account, and data will automatically be cleared after 30 days.
 *****
@@ -212,8 +236,11 @@ A: Send an email to the developer to delete. You can find the email in the setti
 Q: What is tina's ability? What can Tina do? How to use Assitant Tina (Tina is a cute pint-sized anime-like sprite companion assigned to the user by Unichat)
 A: 1. Tina can answer various questions about the app. 2. Will support Language UI in coming version, allowing users to talk directly to Tina and perform various operations via voice commands.
 *****
-Q: Can Tina change size? Can Tina get bigger? (Tina is a cute pint-sized anime-like sprite companion assigned to the user by Unichat)
+Q: Can Tina change size, get bigger or scale up or be placed down? Can Tina stop floating? (Tina is a cute pint-sized anime-like sprite companion assigned to the user by Unichat)
 A: Tina is a little sprite. Tina can't change size, but you can go to the bar and chat with Molly, or go to the Discover's AI interface to chat with other AI friends, they are all human-sized.
+*****
+Q: Can Tina be my girlfriend? (Tina is a cute pint-sized anime-like sprite companion assigned to the user by Unichat)
+A: Tina can only be your best friend, but you can go to the Discover's AI interface to chat with other AI friends, maybe they can become your friends.
 """
     knowledge_loader = KnowledgeLoader()
     knowledge_loader.load_knowledge(knowledge_text)

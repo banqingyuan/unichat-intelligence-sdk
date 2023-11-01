@@ -87,7 +87,7 @@ class UserMemoryEntity:
         self.last_met_timestamp = int(result.get(AI_memory_last_met_timestamp, time.time()))
         self.time_duration_since_last_met = int(time.time()) - self.last_met_timestamp
         self.time_since_last_met_description = seconds_to_english_readable(self.time_duration_since_last_met) if self.time_duration_since_last_met > 2 else 'just now'
-
+        self.ideal_level = result.get(AI_memory_ideal_level, '')
         self.topic_mentioned_last_time = result.get(AI_memory_topic_mentioned_last_time, None)
         self.intimacy_point = result.get(AI_memory_intimacy_point, 0)
         self.intimacy_level = result.get(AI_memory_intimacy_level, 'just_met')
