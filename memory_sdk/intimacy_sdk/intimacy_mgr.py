@@ -247,7 +247,7 @@ class IntimacyMgr:
         current_level_str = mem_entity.get_intimacy_level()
         new_expected_level_int = 1
 
-        for level_int, point in self.intimacy_level2point.items():
+        for level_int, point in reversed(self.intimacy_level2point.items()):
             if current_intimacy_point > point:
                 new_expected_level_int = level_int
                 break
@@ -286,3 +286,13 @@ class IntimacyMgr:
 
 def _assemble_key(intimacy_ticket: IntimacyBase) -> str:
     return f'{intimacy_ticket.source_id} intimacy towards {intimacy_ticket.target_id}'
+
+if __name__ == '__main__':
+    mp = {
+        1: 'a',
+        2: 'b',
+        3: 'c',
+        4: "d",
+    }
+    for k, v in reversed(mp.items()):
+        print(k, v)
