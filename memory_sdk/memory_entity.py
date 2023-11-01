@@ -22,6 +22,7 @@ AI_memory_intimacy_level = "intimacy_level"
 AI_memory_target_nickname = "target_nickname"
 AI_memory_user_language = "user_language"
 AI_memory_met_times = "met_times"
+AI_memory_ideal_level = 'ideal_level'
 AI_memory_last_met_timestamp = "last_met_timestamp"
 AI_memory_topic_mentioned_last_time = "topic_mentioned_last_time"
 AI_memory_time_since_last_met_description = "time_since_last_met_description"
@@ -57,6 +58,8 @@ class UserMemoryEntity:
         self.user_language = ""
         self.intimacy_point = 0
         self.intimacy_level = 'just_met'
+
+        self.ideal_level = ''
 
         self.current_stash: dict = {}  # 本次对话的暂存
         self.load_memory()
@@ -121,6 +124,14 @@ class UserMemoryEntity:
 
     def set_intimacy_level(self, level: str):
         self._element_stash(AI_memory_intimacy_level, level)
+        self.save_stash()
+
+    def get_ideal_level(self):
+        return self.ideal_level
+
+    def set_ideal_level(self, level: str):
+        self.ideal_level = level
+        self._element_stash(AI_memory_ideal_level, level)
         self.save_stash()
 
     def set_topic_mentioned_last_time(self, event_block_name: str):

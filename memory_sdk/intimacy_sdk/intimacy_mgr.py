@@ -9,7 +9,7 @@ from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
 
 from memory_sdk.hippocampus import HippocampusMgr
 from memory_sdk.intimacy_sdk.intimacy_ticket import IntimacyBase, IntimacyTicketChatTime
-from memory_sdk.memory_entity import AI_memory_intimacy_level, AI_memory_intimacy_point, UserMemoryEntity
+from memory_sdk.memory_entity import UserMemoryEntity
 
 logger = wrapper_azure_log_handler(
     wrapper_std_output(
@@ -223,8 +223,7 @@ class IntimacyMgr:
             if mem_entity is None:
                 # 防止exception，日志里面打过了
                 continue
-            old_intimacy_point = mem_entity.get_intimacy_point()
-            new_intimacy_point = mem_entity.add_intimacy_point(add_value)
+            current_intimacy_point = mem_entity.add_intimacy_point(add_value)
 
             ids = self.mongo_db.create_document(
                 'AI_intimacy_record',
@@ -232,18 +231,39 @@ class IntimacyMgr:
                 *['source_id', 'target_id']
             )
 
-            # todo 亲密度的实现还太糙了
-            for level, point in self.intimacy_level2point.items():
-                if new_intimacy_point >= point > old_intimacy_point:
-                    tmp_relation_mapping = {
-                        1: JUST_MET,
-                        2: CASUAL_FRIEND,
-                        3: SPECIAL_FRIEND,
-                        4: BEST_FRIEND
-                    }
-                    new_relation = tmp_relation_mapping[level]
-                    self._upgrade_intimacy_level(new_relation, mem_entity)
+            need_upgrade, new_intimacy_level = self._time_to_upgrade_intimacy(current_intimacy_point, mem_entity)
+            if need_upgrade:
+                self._upgrade_intimacy_level(new_intimacy_level, mem_entity)
             logger.debug(f'create AI_intimacy_record ids: {[str(id) for id in ids]}')
+
+    def _time_to_upgrade_intimacy(self, current_intimacy_point: int, mem_entity: UserMemoryEntity) -> (bool, False):
+
+        tmp_relation_mapping = {
+            1: JUST_MET,
+            2: CASUAL_FRIEND,
+            3: SPECIAL_FRIEND,
+        }
+
+        current_level_str = mem_entity.get_intimacy_level()
+        new_expected_level_int = 1
+
+        for level_int, point in self.intimacy_level2point.items():
+            if current_intimacy_point > point:
+                new_expected_level_int = level_int
+                break
+
+        if new_expected_level_int < 4:
+            new_expected_level_str = tmp_relation_mapping[new_expected_level_int]
+            if new_expected_level_str != current_level_str:
+                return True, new_expected_level_str
+        elif new_expected_level_int == 4:
+            ideal_level = mem_entity.get_ideal_level()
+            if not ideal_level or ideal_level not in [BEST_FRIEND, ROMANTIC_PARTNER]:
+                return False, ''
+            if ideal_level != current_level_str:
+                return True, ideal_level
+
+        return False, ''
 
     def _upgrade_intimacy_level(self, request_level: str, mem_entity: UserMemoryEntity) -> bool:
         if request_level not in self.support_level:
@@ -254,6 +274,7 @@ class IntimacyMgr:
         if intimacy_point < level_request_point:
             return False
         mem_entity.set_intimacy_level(request_level)
+        logger.info(f'upgrade intimacy level to {request_level} for {mem_entity.AID} {mem_entity.target_id}')
 
     def __new__(cls, *args, **kwargs):
         if not hasattr(IntimacyMgr, "_instance"):

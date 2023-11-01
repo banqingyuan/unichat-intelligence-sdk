@@ -22,13 +22,8 @@ class RouterNode:
         self.name: str = kwargs['name']
         self.description: str = kwargs['description']
         self.llm_router: Optional[Dict] = kwargs.get('llm_router', None)
-        self.script_router: str = kwargs.get('script_router', None)
-        self.is_portal: bool = kwargs.get('is_portal', False)
+        self.script_router: str = kwargs.get('script_router', None) # todo 考虑把脚本迁移到仓库里
         self.child_node: List[str] = kwargs.get('child_node', [])
-
-    def is_portal_node(self) -> bool:
-        return self.is_portal is True
-
 
 
 

@@ -27,6 +27,7 @@ class BluePrintInstance:
         try:
             self.name = bp_script['name']
             self.description = bp_script['description']
+            self.portal_node = bp_script['portal_node']
             self.current_node_name = self._construct_blue_print(bp_script)
             self.action_queue: Optional[queue.Queue] = None
             self.llm_client = ChatGPTClient(temperature=0)
@@ -35,17 +36,17 @@ class BluePrintInstance:
             logger.error(f"Missing key in blue print script: {e}")
             raise Exception("Missing key in blue print script")
 
-    def init(self, action_queue: queue.Queue):
+    def init(self, action_queue: queue.Queue, context_event: List[BaseEvent]):
         self.action_queue = action_queue
+        self.event_context.append(*context_event)
 
-    def _construct_blue_print(self, bp_script: Dict) -> str:
+    def _construct_blue_print(self, bp_script: Dict):
         """
         只能存在一个节点被设置为入口
         动作节点至多有一个出度，且出度只能指向路由节点
         路由节点至少有一个出度
         """
         self.nodes_collection = {}
-        portal_node = None
         for node in bp_script['nodes']:
             if node['type'] == 'action':
                 node_instance = self._construct_action_node(node)
@@ -53,12 +54,7 @@ class BluePrintInstance:
                 node_instance = self._construct_router_node(node)
             else:
                 raise Exception("Unknown node type")
-            if node_instance.is_portal_node:
-                portal_node = node_instance.name
             self.nodes_collection[node['name']] = node_instance
-        if portal_node is None:
-            raise Exception("No portal node")
-        return portal_node
 
     def _construct_router_node(self, node: Dict) -> RouterNode:
         """
@@ -75,7 +71,7 @@ class BluePrintInstance:
         try:
             node = self.nodes_collection.get(self.current_node_name)
             if isinstance(node, RouterNode):
-                next_node_name = self._execute_router_script_node(node, event)
+                next_node_name = self._execute_router(node, event)
                 next_node = self.nodes_collection.get(next_node_name, None)
                 if isinstance(next_node, RouterNode):
                     self.current_node_name = next_node_name
@@ -96,21 +92,26 @@ class BluePrintInstance:
         finally:
             self.event_context.append(event)
 
-    def execute_router(self, node: RouterNode, trigger_event: BaseEvent, **factor_values) -> str:
+    def _execute_router(self, node: RouterNode, trigger_event: BaseEvent, **factor_values) -> str:
         if isinstance(trigger_event, ConversationEvent):
             if node.llm_router and node.llm_router != '':
                 return self._execute_llm_router(node, trigger_event, **factor_values)
+        shared_conditions = ''
         if node.script_router and node.script_router != '':
-            return self._execute_router_script_node(node, trigger_event, **factor_values)
+            next_node, shared_conditions = self._execute_router_script_node(node, trigger_event, **factor_values)
+            if next_node != '':
+                return next_node
+        factor_values.update({'shared_conditions': shared_conditions})
         if node.llm_router and node.llm_router != '':
             return self._execute_llm_router(node, trigger_event, **factor_values)
 
-    def _execute_router_script_node(self, node: RouterNode, event: BaseEvent, **factor_values) -> str:
+    def _execute_router_script_node(self, node: RouterNode, event: BaseEvent, **factor_values) -> (str, str):
         input_params = {
             'optional_child_node': node.child_node,
             'trigger_event': event,
             'tracer': execution_context.get_opencensus_tracer(),
             'next_node': '',
+            'shared_conditions': '',
             **factor_values,
         }
         try:
@@ -118,13 +119,15 @@ class BluePrintInstance:
         except Exception as e:
             logger.exception(e)
             return ''
-        return input_params['next_node']
+        return input_params['next_node'], input_params['shared_conditions']
 
     def _execute_llm_router(self, node: RouterNode, trigger_event: BaseEvent, **factor_values) -> str:
         mission_purpose = self.description
         known_conditions = ''
         for event in self.event_context:
             known_conditions += event.description() + '\n'
+        if 'shared_conditions' in factor_values:
+            known_conditions += factor_values['shared_conditions'] + '\n'
         child_nodes = node.child_node
         next_action_options = ''
         expected_output = ', '.join([node for node in child_nodes])

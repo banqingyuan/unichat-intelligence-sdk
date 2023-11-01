@@ -27,9 +27,9 @@ class BluePrintManager:
                 # todo 补充有效性检查
                 self.bp_collection[bp_script['name']] = bp_script
 
-    def get_instance(self, bp_name: str, q: queue.Queue) -> Optional[BluePrintInstance]:
+    def get_instance(self, bp_name: str) -> Optional[BluePrintInstance]:
         try:
-            return BluePrintInstance(q, self.bp_collection[bp_name])
+            return BluePrintInstance(self.bp_collection[bp_name])
         except Exception as e:
             logger.exception(e)
             return None

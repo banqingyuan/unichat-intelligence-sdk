@@ -33,7 +33,7 @@ class Action(BaseModel):
 
     action_describe: str
     action_name: str
-    action_script: str
+    action_script: str = ''
     queuing_time: int = 1
     active_time: int = 0
     sharing_params: Dict = {}
