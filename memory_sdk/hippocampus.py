@@ -23,17 +23,21 @@ class Hippocampus:
         self.memory_entities: Dict = {}
         self.block_mgr = BlockManager(AID)
 
-    def load_memory_of_user(self, UID: str) -> Optional[UserMemoryEntity]:
+    def load_memory_of_user(self, UID: str, force_update: bool = False) -> Optional[UserMemoryEntity]:
         """
         加载记忆
         :param UID: 用户ID
+        :param force_update: 是否强制更新
         :return: bool 是否加载成功
         """
         try:
             if UID in self.memory_entities:
-                return self.memory_entities[UID]
-            entity = UserMemoryEntity(self.AID, UID, Entity_type_user)
-            self.memory_entities[UID] = entity
+                entity = self.memory_entities[UID]
+            else:
+                entity = UserMemoryEntity(self.AID, UID, Entity_type_user)
+                self.memory_entities[UID] = entity
+            if force_update:
+                entity.load_memory()
             return entity
         except Exception as e:
             logger.error(f'load memory of user error: {e}')

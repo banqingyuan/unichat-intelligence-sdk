@@ -23,6 +23,7 @@ SPECIAL_FRIEND = 'special_friend'
 BEST_FRIEND = 'best_friend'
 ROMANTIC_PARTNER = 'romantic_partner'
 
+
 class IntimacyMgr:
     """
     亲密度管理
@@ -93,8 +94,7 @@ class IntimacyMgr:
 
     def get_intimacy_info(self, UID: str, AID: str) -> (int, str, int, int):
         try:
-            entity = HippocampusMgr().get_hippocampus(AID).load_memory_of_user(UID)
-            entity.load_memory()
+            entity = HippocampusMgr().get_hippocampus(AID).load_memory_of_user(UID, True)
             if not entity:
                 return 0, JUST_MET, 0, 0
             intimacy_point = entity.get_intimacy_point()
@@ -116,6 +116,13 @@ class IntimacyMgr:
         except Exception as e:
             logger.error(f'get intimacy info error: {e}')
             return 0, JUST_MET, 0, 0
+
+    def set_ideal_intimacy(self, UID: str, AID: str, ideal_intimacy: str):
+        mem_entity = HippocampusMgr().get_hippocampus(AID).load_memory_of_user(UID, True)
+        if ideal_intimacy not in [BEST_FRIEND, ROMANTIC_PARTNER]:
+            raise ValueError(f'unsupported ideal intimacy: {ideal_intimacy}')
+        mem_entity.set_ideal_level(ideal_intimacy)
+        self._check_and_update_intimacy(UID, AID, False)
 
 
     def _add_in_stash(self, intimacy_ticket: IntimacyBase):
@@ -231,12 +238,17 @@ class IntimacyMgr:
                 *['source_id', 'target_id']
             )
 
-            need_upgrade, new_intimacy_level = self._time_to_upgrade_intimacy(current_intimacy_point, mem_entity)
-            if need_upgrade:
-                self._upgrade_intimacy_level(new_intimacy_level, mem_entity)
-            logger.debug(f'create AI_intimacy_record ids: {[str(id) for id in ids]}')
+            self._check_and_update_intimacy(source_id, target_id, False)
 
-    def _time_to_upgrade_intimacy(self, current_intimacy_point: int, mem_entity: UserMemoryEntity) -> (bool, False):
+            logger.debug(f'create AI_intimacy_record ids: {[str(id) for id in ids]} current intimacy point: {current_intimacy_point}')
+
+    def _check_and_update_intimacy(self, source_id: str, target_id: str, need_upgrade: bool):
+        mem_entity = HippocampusMgr().get_hippocampus(source_id).load_memory_of_user(target_id, need_upgrade)
+        need_upgrade, new_intimacy_level = self._time_to_upgrade_intimacy(mem_entity)
+        if need_upgrade:
+            self._upgrade_intimacy_level(new_intimacy_level, mem_entity)
+
+    def _time_to_upgrade_intimacy(self, mem_entity: UserMemoryEntity) -> (bool, False):
 
         tmp_relation_mapping = {
             1: JUST_MET,
@@ -244,6 +256,7 @@ class IntimacyMgr:
             3: SPECIAL_FRIEND,
         }
 
+        current_intimacy_point = mem_entity.get_intimacy_point()
         current_level_str = mem_entity.get_intimacy_level()
         new_expected_level_int = 1
 
@@ -251,7 +264,7 @@ class IntimacyMgr:
             if current_intimacy_point > point:
                 new_expected_level_int = level_int
                 break
-
+        # todo 不是所有的AI都有浪漫关系亲密度选项
         if new_expected_level_int < 4:
             new_expected_level_str = tmp_relation_mapping[new_expected_level_int]
             if new_expected_level_str != current_level_str:
