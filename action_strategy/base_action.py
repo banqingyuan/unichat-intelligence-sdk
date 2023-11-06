@@ -2,8 +2,11 @@ import logging
 import queue
 import threading
 from typing import Any, Dict, List, ClassVar, Optional, Type
+
+import uuid
 from common_py.model.system_hint import SystemHintEvent
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
+from opencensus.trace import execution_context
 from pydantic import BaseModel, Field
 
 from action_strategy.function_call import FunctionDescribe
@@ -38,6 +41,7 @@ class BaseAction(FunctionDescribe):
     active_time: int = 0
     system_hint: Optional[SystemHintEvent] = None
     params: dict = {}
+    UUID: str = str(uuid.uuid4())
 
     def set_args(self, **kwargs):
         for name, prop in self.parameters.properties.items():
@@ -59,6 +63,8 @@ class BpActionNode(FunctionDescribe):
     """
     next_node_name: str
 
+    tracer_header: str
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -69,6 +75,10 @@ class BpActionNode(FunctionDescribe):
         if kwargs.get('queuing_time', None):
             action_params.update({'queuing_time': kwargs['queuing_time']})
         self.action: BaseAction = BpActionMgr().action_factory(self.name, **action_params)
+
+    def set_tracer(self):
+        tracer = execution_context.get_opencensus_tracer()
+        self.tracer_header = tracer.propagator.to_headers(span_context=tracer.span_context)
 
 
 class BpActionMgr:
