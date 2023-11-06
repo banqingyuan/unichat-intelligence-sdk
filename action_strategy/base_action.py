@@ -37,11 +37,7 @@ class BaseAction(FunctionDescribe):
     system_hint: 特殊逻辑，如果有，动作执行时就会伴随语音输出.
     """
 
-    queuing_time: int = 1
-    active_time: int = 0
-    system_hint: Optional[SystemHintEvent] = None
     params: dict = {}
-    UUID: str = str(uuid.uuid4())
 
     def set_args(self, **kwargs):
         for name, prop in self.parameters.properties.items():
@@ -63,7 +59,12 @@ class BpActionNode(FunctionDescribe):
     """
     next_node_name: str
 
+    queuing_time: int = 1
+    active_time: int = 0
+    system_hint: Optional[SystemHintEvent] = None
     tracer_header: str
+
+    UUID: str = str(uuid.uuid4())
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
