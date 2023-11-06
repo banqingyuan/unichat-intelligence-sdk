@@ -8,7 +8,7 @@ from common_py.model.scene import SceneEvent
 from common_py.utils.logger import wrapper_std_output, wrapper_azure_log_handler
 from memory_sdk.hippocampus import Hippocampus
 
-from action_strategy.action import Action
+from action_strategy.base_action import BaseAction
 from memory_sdk.memory_entity import UserMemoryEntity
 
 logger = wrapper_azure_log_handler(
@@ -46,7 +46,7 @@ class AIActionStrategy:
         actions = []
         action_list = kwargs.get('actions')
         for action_dict in action_list:
-            actions.append(Action(**action_dict))
+            actions.append(BaseAction(**action_dict))
         self.weight: Optional[int] = kwargs.get('weight', None)
         self.actions = actions
         # 触发动作，比如，用户开启AI, 用户加入房间

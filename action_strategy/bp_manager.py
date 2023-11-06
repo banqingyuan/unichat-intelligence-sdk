@@ -27,9 +27,9 @@ class BluePrintManager:
                 # todo 补充有效性检查
                 self.bp_collection[bp_script['name']] = bp_script
 
-    def get_instance(self, bp_name: str) -> Optional[BluePrintInstance]:
+    def get_instance(self, channel_name: str, bp_name: str) -> Optional[BluePrintInstance]:
         try:
-            return BluePrintInstance(self.bp_collection[bp_name])
+            return BluePrintInstance(channel_name, self.bp_collection[bp_name])
         except Exception as e:
             logger.exception(e)
             return None
