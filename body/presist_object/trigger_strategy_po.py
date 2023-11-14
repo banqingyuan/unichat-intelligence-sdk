@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 from common_py.client.azure_mongo import MongoDBClient
 from common_py.utils.logger import wrapper_std_output, wrapper_azure_log_handler
@@ -11,15 +11,21 @@ logger = wrapper_azure_log_handler(
     )
 )
 
-
 class AITriggerStrategyPo(BaseModel):
-
     # 策略ID
     strategy_id: str
     # 策略名称
     strategy_name: str
     # 触发动作，由哪个动作触发策略
-    trigger_action: str
+    '''
+    {
+    "AI_wakeup": {
+        "name": "AI_wakeup",
+        "type": "immediately",
+        }
+    }
+    '''
+    trigger_actions: Dict[str, Dict[str, str]]
     # 策略优先级，同时命中的情况下，优先级高的生效 (0-500) 越小优先级越高
     strategy_priority: str
     # 策略生效时间

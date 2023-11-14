@@ -38,3 +38,9 @@ class FunctionDescribe(BaseModel):
         for name, prop in self.parameters.properties.items():
             if name in kwargs:
                 prop.value = kwargs[name]
+
+    def get_value(self, prop_name: str) -> Optional[str]:
+        dance_name_prop = self.parameters.properties.get(prop_name, None)
+        if not dance_name_prop or not dance_name_prop.value or dance_name_prop.value == '':
+            return None
+        return dance_name_prop.value

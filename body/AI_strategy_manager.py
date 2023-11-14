@@ -57,8 +57,7 @@ class AIStrategyManager:
             if s is not None:
                 self.effective_strategy.append(s)
         for s in self.effective_strategy:
-            for trigger in s.trigger_actions:
-                trigger_name = trigger.get("name", None)
+            for trigger_name in s.trigger_actions.keys():
                 self.strategy_trigger_map.setdefault(trigger_name, []).append(s)
 
     def bind_trigger(self, effective_strategy):
@@ -90,7 +89,6 @@ class AIStrategyManager:
             winner_strategy_lst.append(random.choices(weight_strategy_lst, weights=weight_lst, k=1)[0])
 
         for s in winner_strategy_lst:
-
             for action in s.actions:
                 if action.pre_loading(trigger_event, **factor_value):
                     self.action_queue.put((action, trigger_event))

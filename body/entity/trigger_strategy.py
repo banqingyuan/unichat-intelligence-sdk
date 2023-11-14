@@ -1,5 +1,6 @@
 import logging
 import random
+import threading
 import time
 from typing import Optional
 from common_py.model.scene import SceneEvent
@@ -7,6 +8,7 @@ from common_py.utils.logger import wrapper_std_output, wrapper_azure_log_handler
 
 from body.blue_print.bp_instance import BluePrintManager
 from body.const import StrategyActionType_BluePrint, StrategyActionType_Action
+from body.entity.action_node import ActionNodeMgr
 from body.presist_object.trigger_strategy_po import AITriggerStrategyPo
 
 logger = wrapper_azure_log_handler(
@@ -19,7 +21,7 @@ logger = wrapper_azure_log_handler(
 
 
 class AIActionStrategy:
-    must_provide = ['strategy_id', 'strategy_name', 'strategy_priority', 'start_time', 'end_time', 'actions', 'trigger_actions', 'target']
+    must_provide = ['strategy_id', 'strategy_name', 'strategy_priority', 'start_time', 'end_time', 'trigger_actions']
     eval_result_execute = 'execute'
     eval_result_ignore = 'ignore'
 
@@ -29,7 +31,7 @@ class AIActionStrategy:
         # 策略名称
         self.strategy_name = trigger_po.strategy_name
         # 触发动作，比如，用户开启AI, 用户加入房间
-        self.trigger_actions = trigger_po.trigger_action
+        self.trigger_actions = trigger_po.trigger_actions
         # 策略优先级，同时命中的情况下，优先级高的生效 (0-500) 越小优先级越高
         self.strategy_priority = int(trigger_po.strategy_priority)
         # 策略生效时间
@@ -50,24 +52,20 @@ class AIActionStrategy:
 
         # 满足条件后需要执行的动作
         # todo Action单独一张表 剧本：ActionScript 单独一张表，蓝图单独一张表，触发单独一张表
-        # 这里是触发的结构，触发可以绑定ActionScript，也可以绑定蓝图，但是不可以直接绑定Action
+        # 这里是触发的结构，触发可以绑定ActionNode，也可以绑定蓝图，但是不可以直接绑定Action
         if trigger_po.action_type == StrategyActionType_BluePrint:
             self.blue_print = BluePrintManager().get_instance(trigger_po.action_id)
         elif trigger_po.action_type == StrategyActionType_Action:
-            self.action
+            self.action = ActionNodeMgr().get_action_node(trigger_po.action_id)
         else:
             raise ValueError(f"invalid action_type: {trigger_po.action_type}")
-
+        self.thread_lock = threading.Lock()
         self._check_valid()
 
     def _check_valid(self):
         for key in self.must_provide:
             if getattr(self, key, None) is None:
                 raise ValueError(f"invalid {key}")
-        if not isinstance(self.actions, list):
-            raise ValueError("actions must be list")
-        if not isinstance(self.target, dict):
-            raise ValueError("target_detail must be list")
         if not isinstance(self.trigger_actions, list):
             raise ValueError("trigger_actions must be list")
 
@@ -102,9 +100,9 @@ class AIActionStrategy:
 
     def _check_trigger(self, trigger_name: str):
         valid = False
-        for trigger in [trigger for trigger in self.trigger_actions if trigger['name'] == trigger_name]:
-            if trigger.get("type") == 'immediately':
-                return True
+        if trigger_name in self.trigger_actions:
+            if self.trigger_actions[trigger_name].get("type") == 'immediately':
+                valid = True
         return valid
 
     def _check_effective(self):
