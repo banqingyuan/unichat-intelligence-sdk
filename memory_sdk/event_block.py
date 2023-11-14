@@ -317,7 +317,7 @@ def load_all_block_from_mongo() -> List[EventBlock]:
         del item['origin_event']
         block_item = EventBlock(**item)
         block_item.origin_event = events
-        if block_item.create_timestamp > 1698291261:
+        if block_item.create_timestamp > 1699586385:
             block_lst.append(block_item)
     return block_lst
 

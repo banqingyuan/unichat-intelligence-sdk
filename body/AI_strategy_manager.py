@@ -1,6 +1,5 @@
 import logging
 import random
-import time
 from queue import Queue
 from typing import List, Dict, Optional
 
@@ -8,7 +7,7 @@ from common_py.client.azure_mongo import MongoDBClient
 from common_py.dto.ai_instance import AIBasicInformation
 from common_py.model.scene import SceneEvent
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
-from action_strategy.strategy import AIActionStrategy, build_strategy
+from body.entity.trigger_strategy import AIActionStrategy, build_strategy
 
 logger = wrapper_azure_log_handler(
     wrapper_std_output(
@@ -91,10 +90,10 @@ class AIStrategyManager:
             winner_strategy_lst.append(random.choices(weight_strategy_lst, weights=weight_lst, k=1)[0])
 
         for s in winner_strategy_lst:
-            if s.strategy_priority == max_priority:
-                for action in s.actions:
-                    if action.pre_loading(trigger_event, **factor_value):
-                        self.action_queue.put((action, trigger_event))
+
+            for action in s.actions:
+                if action.pre_loading(trigger_event, **factor_value):
+                    self.action_queue.put((action, trigger_event))
             if not s.execute_count():
                 self.effective_strategy.remove(s)
                 eval_strategy.remove(s)
