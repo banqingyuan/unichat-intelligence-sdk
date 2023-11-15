@@ -25,6 +25,7 @@ def build_condition(condition):
 
 
 class AIStrategyManager:
+
     def __init__(self, **kwargs):
         self.AID = kwargs.get('AID', None)
         self.ai_info: AIBasicInformation = kwargs.get('ai_info', None)
@@ -36,23 +37,27 @@ class AIStrategyManager:
         self.strategy_trigger_map: Dict[str, List[AIActionStrategy]] = {}
 
     def load(self):
-        strategies = self.mongodb_client.find_from_collection("AI_action_strategy", filter={
-            "$or": [
-                {
-                    "target.type": "AI",
-                    "target.AI_type": self.ai_info.type,
-                    "$or": [
-                        {"target.tpl_name": {"$exists": False}},
-                        {"target.tpl_name": {"$eq": ""}}
-                    ]
-                },
-                {
-                    "target.tpl_name": self.ai_info.tpl_name
-                }
-            ]
-            # todo 补充筛选条件，现在暂不满足
+        strategies_relation_info = self.mongodb_client.find_from_collection("AI_strategy_relation", filter={
+            "AID": self.AID,
         })
-        for strategy in strategies:
+
+        all_strategy_ids = {}
+        if 'strategy_packages' in strategies_relation_info:
+            strategy_package_ids = strategies_relation_info['strategy_packages']
+            strategy_package_info = self.mongodb_client.find_from_collection("AI_strategy_package", filter={
+                "strategy_package_id": {"$in": strategy_package_ids}
+            })
+            strategy_id_list = strategy_package_info['strategy_list']
+            for strategy_id in strategy_id_list:
+                # 放map里去重
+                all_strategy_ids[strategy_id] = True
+
+        all_strategy_id_lst = [strategy_id for strategy_id in all_strategy_ids.keys()]
+        all_strategy_info = self.mongodb_client.find_from_collection("AI_strategy_detail", filter={
+            "strategy_id": {"$in": all_strategy_id_lst}
+        })
+
+        for strategy in all_strategy_info:
             s = build_strategy(strategy)
             if s is not None:
                 self.effective_strategy.append(s)
