@@ -16,6 +16,7 @@ logger = wrapper_azure_log_handler(
 class BPRouterPo(BaseModel):
     router_id: str
     router_name: str
+    description: str
     router_type: str = None
     child_node_ids: Dict[str, List[str]]
     script_router: str = None

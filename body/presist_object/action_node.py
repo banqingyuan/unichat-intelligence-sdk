@@ -16,8 +16,10 @@ logger = wrapper_azure_log_handler(
 class ActionNodePo(BaseModel):
 
     node_id: str
-    queuing_time: int = 1
+    queuing_time: str = '1'
     system_prompt: Optional[str] = None
+
+    node_name: str
 
     # action_program 以后是由无代码拖拽生成，类似scratch
     action_type: str

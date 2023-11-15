@@ -1,6 +1,5 @@
 import logging
 import threading
-import uuid
 from typing import Dict, Optional, List
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
 
@@ -28,7 +27,6 @@ class RouterNode(FunctionDescribe):
     """
     id: str
     router_type: str = RouterType_Anonymous
-    router_name: str
     script_router: Optional[str] = None
     child_node_ids: Dict[str, List[str]]
 
@@ -54,7 +52,8 @@ class BPRouterManager:
         router = RouterNode(
             script_router=router_po.script_router,
             id=router_po.router_id,
-            router_name=router_po.router_name,
+            name=router_po.router_name,
+            description=router_po.description,
             router_type=router_po.router_type,
             child_node_ids=router_po.child_node_ids
         )

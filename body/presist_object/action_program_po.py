@@ -17,6 +17,7 @@ logger = wrapper_azure_log_handler(
 class ActionProgramPo(BaseModel):
     program_id: str
     program_name: str
+    description: str
 
     # 所有存放的节点id
     action_nodes: List[str]

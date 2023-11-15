@@ -42,14 +42,6 @@ class ActionNode(FunctionDescribe):
     def __init__(self,  **kwargs):
         super().__init__(**kwargs)
 
-        if 'action_type' not in kwargs or 'node_id' not in kwargs:
-            raise ValueError("action_type should not be empty")
-
-        system_message = kwargs.get('system_message', None)
-        if system_message:
-            self.system_hint = SystemHintEvent(message=system_message)
-
-        self.queuing_time = int(kwargs.get('queuing_time', 1))
         if self.action_type == ActionType_Atom:
             self.action_Atom = ActionProgramMgr().get_action_atom(kwargs['action_name'])
         elif self.action_type == ActionType_Program:
@@ -91,7 +83,11 @@ class ActionNodeMgr:
             return ActionNode(
                 id=action_node_po.node_id,
                 action_type=action_node_po.action_type,
-                action_name=action_node_po.action_name
+                action_name=action_node_po.action_name,
+                name=action_node_po.node_name,
+                description=action_node_po.description,
+                queuing_time=int(action_node_po.queuing_time),
+                system_hint=SystemHintEvent(message=action_node_po.system_prompt) if action_node_po.system_prompt and action_node_po.system_prompt != '' else None,
             )
         except Exception as e:
             logger.exception(e)

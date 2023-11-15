@@ -31,7 +31,10 @@ class ActionAtom(FunctionDescribe):
 
     action_engine: BaseAction
 
-    output_args: Optional[Dict[str, str]] = None
+    # 不需要了，初始化时直接preset到parameter中
+    # preset_value: Dict[str, str] = None
+
+    # output_args: Optional[Dict[str, str]] = None
 
     # waiting, done
     execute_status: str = ActionAtomStatus_Waiting
@@ -135,7 +138,7 @@ class ActionProgramMgr:
                 action_engine=action_instance,
                 description=po.atom_description
             )
-            action_atom.set_params(**po.action_preset_args.dict())
+            action_atom.set_params(**po.action_preset_args)
             return action_atom
         except Exception as e:
             logger.exception(e)
@@ -152,9 +155,10 @@ class ActionProgramMgr:
                 action_nodes[node] = self.get_action_atom(node)
             action_program = ActionProgram(
                 action_program_id=program.program_id,
-                action_program_name=program.program_name,
+                name=program.program_name,
                 action_nodes=action_nodes,
-                action_graph=program.action_graph
+                action_graph=program.action_graph,
+                description=program.description
             )
             return action_program
         except Exception as e:

@@ -23,8 +23,8 @@ class ActionAtomPo(BaseModel):
     # action 类型 用于区分不同的动作模板
     action_type: str
 
-    action_preset_args: Parameter = None
-    args_input: Parameter = None
+    # 用户填写的常量参数
+    action_preset_args: Dict[str, str] = None
 
 
 def load_all_action_atom_po() -> Dict[str, ActionAtomPo]:
