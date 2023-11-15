@@ -65,6 +65,12 @@ class ActionNode(FunctionDescribe):
         tracer = execution_context.get_opencensus_tracer()
         self.tracer_header = tracer.propagator.to_headers(span_context=tracer.span_context)
 
+    def execute(self):
+        if self.action_type == ActionType_Atom:
+            yield self.action_Atom
+        elif self.action_type == ActionType_Program:
+            return self.action_program.execute()
+
 
 class ActionNodeMgr:
     _instance_lock = threading.Lock()

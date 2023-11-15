@@ -31,8 +31,14 @@ class ActionAtom(FunctionDescribe):
 
     action_engine: BaseAction
 
+    output_args: Optional[Dict[str, str]] = None
+
     # waiting, done
     execute_status: str = ActionAtomStatus_Waiting
+
+    def set_output_args(self, **output_args):
+        logger.info(f"set output args for {self.atom_id}: {output_args}")
+        self.output_args = output_args
 
 
 class ActionProgram(FunctionDescribe):
@@ -49,9 +55,12 @@ class ActionProgram(FunctionDescribe):
 
     # 所有存放的节点
     action_nodes: Dict[str, ActionAtom]
+
     # 通过id索引的，上一个动作的id 通过索引构成的有向无环图
-    action_graph: Dict[str, str]
-    # 待运行节点依赖满足检查
+    # from one atom to another atom, with output_args to input_args
+    action_graph: Dict[str, Dict[str, Dict[str, str]]]
+
+    # 待运行节点依赖满足检查 key: 子节点 value: 父节点
     action_stash: Dict[str, List[str]] = {}
     # program_status: str = 'waiting'
 
@@ -60,18 +69,39 @@ class ActionProgram(FunctionDescribe):
         self._analyse_action_dependency()
 
     def _analyse_action_dependency(self):
-        for parent_action, child_action in self.action_graph.items():
-            if child_action not in self.action_stash:
-                self.action_stash[child_action] = []
-            self.action_stash[child_action].append(parent_action)
+        for parent_action, child_actions in self.action_graph.items():
+            for child_action in child_actions.keys():
+                if child_action not in self.action_stash:
+                    self.action_stash[child_action] = []
+                self.action_stash[child_action].append(parent_action)
 
     def ready_to_execute(self) -> List[str]:
         ready_actions = []
         for action_id, dependencies in self.action_stash.items():
             if all([self.action_nodes[dependency].execute_status == ActionAtomStatus_Done for dependency in dependencies]):
+                for parent_id in dependencies:
+                    self._args_preset(parent_id, action_id)
                 ready_actions.append(action_id)
                 del self.action_stash[action_id]
         return ready_actions
+
+    def _args_preset(self, parent_id: str, child_id: str):
+        parent_atom = self.action_nodes[parent_id]
+        args = parent_atom.output_args
+        mapped_args = self.action_graph[parent_id][child_id]
+
+        args_to_fill = {}
+        for source_args_name, target_args_name in mapped_args.items():
+            if source_args_name in args:
+                args_to_fill[target_args_name] = args[source_args_name]
+        self.action_nodes[child_id].set_params(**args_to_fill)
+        logger.info(f"preset args for {child_id} from {parent_id}: {args_to_fill}")
+
+    def execute(self):
+        ready_actions = self.ready_to_execute()
+        for action_id in ready_actions:
+            action_atom = self.action_nodes[action_id]
+            yield action_atom
 
 
 class ActionProgramMgr:
