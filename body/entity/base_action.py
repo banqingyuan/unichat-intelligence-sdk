@@ -1,5 +1,6 @@
 import logging
 import threading
+from abc import abstractmethod
 from typing import Dict, Type
 
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
@@ -25,7 +26,12 @@ class BaseAction(FunctionDescribe):
     每种action需要的参数种类是固定的，在sharing_params中提供
     参数生成逻辑不一而足，统一在action_script中把必要参数填充进sharing_params
     """
-    pass
+    @abstractmethod
+    def execute(self, **kwargs) -> bool:
+        """
+        执行动作，bool表示是否可以执行后续动作, 如果存在阻断性错误则False
+        """
+        raise NotImplementedError
 
 
 class BaseActionMgr:
