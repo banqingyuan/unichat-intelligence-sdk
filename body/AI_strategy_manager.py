@@ -1,6 +1,5 @@
 import logging
 import random
-import time
 from queue import Queue
 from typing import List, Dict, Optional
 
@@ -8,7 +7,7 @@ from common_py.client.azure_mongo import MongoDBClient
 from common_py.dto.ai_instance import AIBasicInformation
 from common_py.model.scene import SceneEvent
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
-from action_strategy.strategy import AIActionStrategy, build_strategy
+from body.entity.trigger_strategy import AIActionStrategy, build_strategy
 
 logger = wrapper_azure_log_handler(
     wrapper_std_output(
@@ -26,6 +25,7 @@ def build_condition(condition):
 
 
 class AIStrategyManager:
+
     def __init__(self, **kwargs):
         self.AID = kwargs.get('AID', None)
         self.ai_info: AIBasicInformation = kwargs.get('ai_info', None)
@@ -37,29 +37,32 @@ class AIStrategyManager:
         self.strategy_trigger_map: Dict[str, List[AIActionStrategy]] = {}
 
     def load(self):
-        strategies = self.mongodb_client.find_from_collection("AI_action_strategy", filter={
-            "$or": [
-                {
-                    "target.type": "AI",
-                    "target.AI_type": self.ai_info.type,
-                    "$or": [
-                        {"target.tpl_name": {"$exists": False}},
-                        {"target.tpl_name": {"$eq": ""}}
-                    ]
-                },
-                {
-                    "target.tpl_name": self.ai_info.tpl_name
-                }
-            ]
-            # todo 补充筛选条件，现在暂不满足
+        strategies_relation_info = self.mongodb_client.find_from_collection("AI_strategy_relation", filter={
+            "AID": self.AID,
         })
-        for strategy in strategies:
+
+        all_strategy_ids = {}
+        if 'strategy_packages' in strategies_relation_info:
+            strategy_package_ids = strategies_relation_info['strategy_packages']
+            strategy_package_info = self.mongodb_client.find_from_collection("AI_strategy_package", filter={
+                "strategy_package_id": {"$in": strategy_package_ids}
+            })
+            strategy_id_list = strategy_package_info['strategy_list']
+            for strategy_id in strategy_id_list:
+                # 放map里去重
+                all_strategy_ids[strategy_id] = True
+
+        all_strategy_id_lst = [strategy_id for strategy_id in all_strategy_ids.keys()]
+        all_strategy_info = self.mongodb_client.find_from_collection("AI_strategy_detail", filter={
+            "strategy_id": {"$in": all_strategy_id_lst}
+        })
+
+        for strategy in all_strategy_info:
             s = build_strategy(strategy)
             if s is not None:
                 self.effective_strategy.append(s)
         for s in self.effective_strategy:
-            for trigger in s.trigger_actions:
-                trigger_name = trigger.get("name", None)
+            for trigger_name in s.trigger_actions.keys():
                 self.strategy_trigger_map.setdefault(trigger_name, []).append(s)
 
     def bind_trigger(self, effective_strategy):
@@ -91,10 +94,9 @@ class AIStrategyManager:
             winner_strategy_lst.append(random.choices(weight_strategy_lst, weights=weight_lst, k=1)[0])
 
         for s in winner_strategy_lst:
-            if s.strategy_priority == max_priority:
-                for action in s.actions:
-                    if action.pre_loading(trigger_event, **factor_value):
-                        self.action_queue.put((action, trigger_event))
+            for action in s.actions:
+                if action.pre_loading(trigger_event, **factor_value):
+                    self.action_queue.put((action, trigger_event))
             if not s.execute_count():
                 self.effective_strategy.remove(s)
                 eval_strategy.remove(s)
