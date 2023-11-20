@@ -139,7 +139,7 @@ def load_animation_to_mongo():
 
 
 def load_animation_from_mongo_to_vdb():
-
+    mongoClient = MongoDBClient(DB_NAME="unichat-backend")
     res_lst = mongoClient.find_from_collection(collection_name="AI_animation_storage", filter={})
     tasks = []
     with ThreadPoolExecutor(max_workers=5) as executor:
