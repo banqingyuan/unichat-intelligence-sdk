@@ -1,11 +1,9 @@
 import json
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from typing import List, Dict
+from typing import List
 
-import uuid
 from common_py.client.azure_mongo import MongoDBClient
-from common_py.client.embedding import OpenAIEmbedding
 from common_py.client.pg import batch_insert_vector, PgEngine, query_vector_info
 from common_py.dto.ai_action_vector import ActionVectorInfo, ActionVector, create_new_action_vector_info
 
@@ -139,7 +137,7 @@ def load_animation_to_mongo():
 
 
 def load_animation_from_mongo_to_vdb():
-
+    mongoClient = MongoDBClient(DB_NAME="unichat-backend")
     res_lst = mongoClient.find_from_collection(collection_name="AI_animation_storage", filter={})
     tasks = []
     with ThreadPoolExecutor(max_workers=5) as executor:
@@ -212,4 +210,4 @@ if __name__ == '__main__':
     PgEngine(**pg_config)
     # mongoClient = MongoDBClient(DB_NAME="unichat-backend")
     # load_animation_from_mongo_to_vdb()
-    AnimationMgr().load_animation_from_vdb("hello", 'female')
+    AnimationMgr().load_animation_from_vdb("Debug面板反了，要背对着才能点，其他人的测试包也有这个问题吗？", 'female')

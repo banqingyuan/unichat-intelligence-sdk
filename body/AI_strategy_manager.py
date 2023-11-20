@@ -79,7 +79,7 @@ class AIStrategyManager:
         max_priority: Optional[int] = None  # 最高优先级，数值上最小的那个
         for strategy in eval_strategy:
             if strategy.eval(trigger_event, **factor_value) == AIActionStrategy.eval_result_execute:
-                executable_lst.append(strategy) # eval 得出了满足条件的策略，但是这并不意味这该策略一定会被执行
+                executable_lst.append(strategy)  # eval 得出了满足条件的策略，但是这并不意味这该策略一定会被执行
                 max_priority = strategy.strategy_priority if max_priority is None or strategy.strategy_priority < max_priority else max_priority
         logger.info(f"AI {self.AID} receive event {trigger_event.event_name}, executable strategy {[s.strategy_name for s in executable_lst]}")
 
