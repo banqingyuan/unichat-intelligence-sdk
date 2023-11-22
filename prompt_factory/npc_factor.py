@@ -1,8 +1,10 @@
 import hashlib
 import json
 import random
+import threading
 import time
 
+from concurrent.futures.thread import ThreadPoolExecutor
 import os
 import logging
 import yaml
@@ -182,7 +184,7 @@ class NPCFactory:
         }
 
         docs = self.mongo_client.find_from_collection("AI_instance", filter=mongo_filter,
-                                                        projection={"_id": 1, "AID": 1})
+                                                      projection={"_id": 1, "AID": 1})
 
         if len(docs) == 0:
             return
@@ -199,10 +201,16 @@ class NPCFactory:
         )
         logger.debug(f"update many document result {mongo_result}")
 
-        for AID in batch_AIDS:
+        def update_ai_info_to_redis(AID: str):
             ai_info = AIBasicInformation(AID=AID)
             ai_info.load_from_mongo(self.mongo_client)
             ai_info.set_to_redis(self.redis_client)
+
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            for AID in batch_AIDS:
+                executor.submit(update_ai_info_to_redis, AID)
+
+        logger.info(f"Refresh AI tpl {tpl_name} to version {version} success: total {len(batch_AIDS)} AI instances")
 
         # # 创建一个pipeline对象
         # pipeline = self.redis_client.pipeline()

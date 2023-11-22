@@ -17,15 +17,7 @@ class AITriggerStrategyPo(BaseModel):
     # 策略名称
     strategy_name: str
     # 触发动作，由哪个动作触发策略
-    '''
-    {
-    "AI_wakeup": {
-        "name": "AI_wakeup",
-        "type": "immediately",
-        }
-    }
-    '''
-    trigger_actions: Dict[str, Dict[str, str]]
+    trigger_lst: List[str]
     # 策略优先级，同时命中的情况下，优先级高的生效 (0-500) 越小优先级越高
     strategy_priority: str
     # 策略生效时间

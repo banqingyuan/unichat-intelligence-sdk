@@ -11,6 +11,9 @@ ActionType_Atom = 'atom'
 BPNodeType_Router = 'router'
 BPNodeType_Action = 'action'
 
+TriggerType_LUI = 'LUI_trigger'
+TriggerType_Scene = 'scene_trigger'
+
 router_prompt = """
 ##### Mission Purpose
 {mission_purpose}

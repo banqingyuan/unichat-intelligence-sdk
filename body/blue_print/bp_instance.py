@@ -63,13 +63,10 @@ class BluePrintInstance:
             self.action_queue: Optional[queue.Queue] = None
             self.llm_client = ChatGPTClient(temperature=0)
             self.event_context: List[BaseEvent] = []
+            self.channel_name: str = ''
         except KeyError as e:
             logger.error(f"Missing key in blue print script: {e}")
             raise Exception("Missing key in blue print script")
-
-    def init(self, action_queue: queue.Queue, context_event: List[BaseEvent]):
-        self.action_queue = action_queue
-        self.event_context.append(*context_event)
 
     def _construct_blue_print(self, bp_po: Dict):
         """
@@ -116,6 +113,11 @@ class BluePrintInstance:
     def add_event_context(self, event: BaseEvent):
         self.event_context.append(event)
 
+    def gen_function_call_describe(self) -> Optional[Dict]:
+        node = self._get_node_instance(self.current_node)
+        if isinstance(node, ActionNode):
+            return node.gen_function_call_describe()
+        return None
 
     def _execute_router(self, node: RouterNode, trigger_event: BaseEvent) -> (str, Parameter):
         # 首先判断是否使用脚本路由，如果不使用，默认使用llm路由
@@ -243,11 +245,18 @@ class BluePrintManager:
             logger.exception(e)
         threading.Timer(120, self.refresh).start()
 
-    def get_instance(self, bp_id: str) -> Optional[BluePrintInstance]:
+    def get_instance(self, bp_id: str, **context_info) -> Optional[BluePrintInstance]:
         try:
             bp_po = self.bp_po_dict.get(bp_id, None)
             if not bp_po:
                 logger.error(f"blue print {bp_id} not found")
+                return None
+            channel_name = context_info.get('channel_name', None)
+            llm_client = ChatGPTClient(temperature=0)
+            action_queue = context_info.get('action_queue', None)
+            event_context = context_info.get('event_context', [])
+            if not channel_name or not action_queue:
+                logger.error(f"channel_name or action_queue not found")
                 return None
             return BluePrintInstance(
                 bp_id=bp_po.bp_id,
@@ -257,6 +266,10 @@ class BluePrintManager:
                 action_nodes=bp_po.action_nodes,
                 router_nodes=bp_po.router_nodes,
                 connections=bp_po.connections,
+                channel_name=channel_name,
+                llm_client=llm_client,
+                action_queue=action_queue,
+                event_context=event_context,
             )
 
         except Exception as e:

@@ -307,7 +307,7 @@ class BlockManager:
 def load_all_block_from_mongo() -> List[EventBlock]:
     block_lst: List[EventBlock] = []
     mongo_client = MongoDBClient()
-    res = mongo_client.find_from_collection('AI_memory_block', filter={})
+    res = mongo_client.find_from_collection('AI_memory_block', filter={'participant_ids.22200003': {'$exists': True}})
     for item in res:
         origin_event = item['origin_event']
         events = []

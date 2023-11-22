@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 from body.const import ActionAtomStatus_Waiting, ActionAtomStatus_Done
 from body.entity.base_action import BaseAction, BaseActionMgr
-from body.entity.function_call import FunctionDescribe
+from body.entity.function_call import FunctionDescribe, combine_parameters
 from body.presist_object.action_atom_po import load_all_action_atom_po, ActionAtomPo
 from body.presist_object.action_program_po import load_all_action_program_po, ActionProgramPo
 
@@ -41,7 +41,7 @@ class ActionAtom(FunctionDescribe):
 
     def set_output_args(self, **output_args):
         logger.info(f"set output args for {self.atom_id}: {output_args}")
-        self.output_args = output_args
+        self.set_output_params(**output_args)
 
 
 class ActionProgram(FunctionDescribe):
@@ -59,6 +59,8 @@ class ActionProgram(FunctionDescribe):
     # 所有存放的节点
     action_nodes: Dict[str, ActionAtom]
 
+    portal_nodes: List[str] = []
+
     # 通过id索引的，上一个动作的id 通过索引构成的有向无环图
     # from one atom to another atom, with output_args to input_args
     action_graph: Dict[str, Dict[str, Dict[str, str]]]
@@ -70,6 +72,11 @@ class ActionProgram(FunctionDescribe):
     def __init__(self, **data):
         super().__init__(**data)
         self._analyse_action_dependency()
+        self.portal_nodes = self._portal_actions()
+        if len(self.portal_nodes) == 0:
+            logger.error(f"action program {self.action_program_id} has no portal node")
+            raise Exception(f"action program {self.action_program_id} has no portal node")
+        self.parameters = combine_parameters([self.action_nodes[portal_node].parameters for portal_node in self.portal_nodes])
 
     def _analyse_action_dependency(self):
         for parent_action, child_actions in self.action_graph.items():
@@ -77,11 +84,16 @@ class ActionProgram(FunctionDescribe):
                 if child_action not in self.action_stash:
                     self.action_stash[child_action] = []
                 self.action_stash[child_action].append(parent_action)
+            if parent_action not in self.action_stash:
+                self.action_stash[parent_action] = []
+
+    def _portal_actions(self) -> List[str]:
+        return [action_id for action_id, dependencies in self.action_stash.items() if len(dependencies) == 0]
 
     def ready_to_execute(self) -> List[str]:
         ready_actions = []
         for action_id, dependencies in self.action_stash.items():
-            if all([self.action_nodes[dependency].execute_status == ActionAtomStatus_Done for dependency in dependencies]):
+            if len(dependencies) == 0 or all([self.action_nodes[dependency].execute_status == ActionAtomStatus_Done for dependency in dependencies]):
                 for parent_id in dependencies:
                     self._args_preset(parent_id, action_id)
                 ready_actions.append(action_id)
@@ -90,13 +102,13 @@ class ActionProgram(FunctionDescribe):
 
     def _args_preset(self, parent_id: str, child_id: str):
         parent_atom = self.action_nodes[parent_id]
-        args = parent_atom.output_args
+        args = parent_atom.output_params
         mapped_args = self.action_graph[parent_id][child_id]
 
         args_to_fill = {}
         for source_args_name, target_args_name in mapped_args.items():
-            if source_args_name in args:
-                args_to_fill[target_args_name] = args[source_args_name]
+            if args.get_prop_value(source_args_name) is not None:
+                args_to_fill[target_args_name] = args.get_prop_value(source_args_name)
         self.action_nodes[child_id].set_params(**args_to_fill)
         logger.info(f"preset args for {child_id} from {parent_id}: {args_to_fill}")
 

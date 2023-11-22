@@ -1,13 +1,24 @@
 import logging
 import random
+from concurrent.futures import ThreadPoolExecutor
 from queue import Queue
 from typing import List, Dict, Optional
 
 from common_py.client.azure_mongo import MongoDBClient
 from common_py.dto.ai_instance import AIBasicInformation
+from common_py.model.base import BaseEvent
+from common_py.model.chat import ConversationEvent
 from common_py.model.scene import SceneEvent
+from common_py.utils.channel.util import get_AID_from_channel
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
-from body.entity.trigger_strategy import AIActionStrategy, build_strategy
+
+from body.blue_print.bp_instance import BluePrintInstance
+from body.const import TriggerType_LUI, TriggerType_Scene
+from body.entity.trigger.base_tirgger import BaseTrigger
+from body.entity.trigger.lui_trigger import LUITrigger, eval_lui_trigger
+from body.entity.trigger.scene_trigger import SceneTrigger
+from body.entity.trigger.trigger_manager import TriggerMgr
+from body.entity.trigger_strategy import AIActionStrategy, build_strategy, AIStrategyMgr
 
 logger = wrapper_azure_log_handler(
     wrapper_std_output(
@@ -27,14 +38,28 @@ def build_condition(condition):
 class AIStrategyManager:
 
     def __init__(self, **kwargs):
-        self.AID = kwargs.get('AID', None)
+        self.channel_name = kwargs.get('channel_name', None)
         self.ai_info: AIBasicInformation = kwargs.get('ai_info', None)
         self.action_queue: Queue = kwargs.get('action_queue', None)
-        if not self.AID or not self.ai_info or not self.action_queue:
-            raise Exception("AIStrategyManager init failed, AID or ai_info or action_queue is None")
+        if not self.channel_name or not self.ai_info or not self.action_queue:
+            raise Exception("AIStrategyManager init failed, channel_name or ai_info or action_queue is None")
+        self.AID = get_AID_from_channel(self.channel_name)
         self.mongodb_client = MongoDBClient()
-        self.effective_strategy: List[AIActionStrategy] = []
-        self.strategy_trigger_map: Dict[str, List[AIActionStrategy]] = {}
+
+        # strategy_id -> strategy
+        self.effective_strategy: Dict[str, AIActionStrategy] = {}
+
+        # event_name -> trigger_id
+        self.scene_name_to_trigger: Dict[str, List[SceneTrigger]] = {}
+
+        # trigger_id to trigger
+        self.trigger_map: Dict[str, BaseTrigger] = {}
+
+        # trigger_id -> strategy  通常只有场景Trigger会对应多个策略
+        self.trigger_strategy_mapping: Dict[str, List[AIActionStrategy]] = {}
+
+        # All LUI trigger id
+        self.LUI_trigger_lst: List[str] = []
 
     def load(self):
         strategies_relation_info = self.mongodb_client.find_from_collection("AI_strategy_relation", filter={
@@ -53,35 +78,120 @@ class AIStrategyManager:
                 all_strategy_ids[strategy_id] = True
 
         all_strategy_id_lst = [strategy_id for strategy_id in all_strategy_ids.keys()]
-        all_strategy_info = self.mongodb_client.find_from_collection("AI_strategy_detail", filter={
-            "strategy_id": {"$in": all_strategy_id_lst}
-        })
+        all_strategy_info = AIStrategyMgr().get_strategy_by_ids(
+            all_strategy_id_lst,
+            channel_name=self.channel_name,
+            action_queue=self.action_queue
+        )
 
         for strategy in all_strategy_info:
-            s = build_strategy(strategy)
-            if s is not None:
-                self.effective_strategy.append(s)
-        for s in self.effective_strategy:
-            for trigger_name in s.trigger_actions.keys():
-                self.strategy_trigger_map.setdefault(trigger_name, []).append(s)
+            self.effective_strategy[strategy.strategy_id] = strategy
+        for _id, s in self.effective_strategy.items():
+            self.bind_trigger(s)
 
     def bind_trigger(self, effective_strategy):
-        # todo 上报给事件监听中心， 注册trigger事件
-        # for s in self.effective_strategy:
-        #     for trigger_action in s.trigger_actions:
-        #         trigger_action
-        pass
+        lui_trigger_map = {}
+        for trigger_id in effective_strategy.trigger_lst:
+            trigger = TriggerMgr().get_trigger_by_id(trigger_id)
+            if not trigger:
+                logger.error(f"Trigger {trigger_id} not found")
+                continue
 
-    def receive_event(self, trigger_event: SceneEvent, **factor_value):
-        eval_strategy = self.strategy_trigger_map.get(trigger_event.event_name, [])
+            self.trigger_map[trigger_id] = trigger
+
+            if trigger_id not in self.trigger_strategy_mapping:
+                self.trigger_strategy_mapping[trigger_id] = []
+            self.trigger_strategy_mapping[trigger_id].append(effective_strategy)
+
+            if isinstance(trigger, LUITrigger):
+                lui_trigger_map[trigger_id] = trigger
+
+            if isinstance(trigger, SceneTrigger):
+                if trigger.trigger_name not in self.scene_name_to_trigger:
+                    self.scene_name_to_trigger[trigger.trigger_name] = []
+                self.scene_name_to_trigger[trigger.trigger_name].append(trigger)
+
+        self.LUI_trigger_lst = list(lui_trigger_map.keys())
+
+    def unbundle_trigger(self, effective_strategy):
+        for trigger_id in effective_strategy.trigger_lst:
+            if trigger_id in self.trigger_strategy_mapping:
+                self.trigger_strategy_mapping[trigger_id].remove(effective_strategy)
+                if len(self.trigger_strategy_mapping[trigger_id]) == 0:
+                    # 此时这个trigger下不再绑定任何策略, 需要解绑Trigger
+                    del self.trigger_strategy_mapping[trigger_id]
+                    trigger = self.trigger_map[trigger_id]
+
+                    if isinstance(trigger, LUITrigger):
+                        if trigger_id in self.LUI_trigger_lst:
+                            self.LUI_trigger_lst.remove(trigger_id)
+                    elif isinstance(trigger, SceneTrigger):
+                        if trigger.trigger_name in self.scene_name_to_trigger:
+                            self.scene_name_to_trigger[trigger.trigger_name].remove(trigger)
+
+                    del self.trigger_map[trigger_id]
+                    # todo 上报给事件监听中心，取消trigger事件
+
+    def receive_conversation_event(self, trigger_event: ConversationEvent) -> (List[Dict], Dict[str, str]):
+        # todo user intent 用户意图，是作为LUI是否需要触发的判定。LUI的启动应该交给LLM，而不是文本相似度
+        # 此处应该根据候选trigger_ids, 找到对应的action入参，拼成function describe，然后调用LLM
+        # LUI触发的依据是意图的吻合程度，因此没有优先级之分
+
+        active_trigger_ids = eval_lui_trigger(self.LUI_trigger_lst, trigger_event.message)
+
+        potential_strategy_lst = []
+        for trigger_id in active_trigger_ids:
+            strategies = self.trigger_strategy_mapping.get(trigger_id, [])
+            if len(strategies) == 0:
+                logger.warning(f"trigger {trigger_id} don't have any strategy")
+                continue
+            if len(strategies) > 1:
+                logger.warning(f"trigger {trigger_id} should not have more than one strategy")
+            strategy = strategies[0]
+            potential_strategy_lst.append(strategy)
+        if len(potential_strategy_lst) == 0:
+            return []
+        func_describe_lst = []
+        describe_strategy_idx = {}
+        for strategy in potential_strategy_lst:
+            func_describe = strategy.get_init_func_describe()
+            describe_strategy_idx[func_describe['name']] = strategy.strategy_id
+            if func_describe is not None:
+                func_describe_lst.append(func_describe)
+        return func_describe_lst, describe_strategy_idx
+
+    def receive_scene_event(self, trigger_event: SceneEvent) -> Optional[BluePrintInstance]:
+
+        eval_trigger = self.scene_name_to_trigger.get(trigger_event.event_name, [])
+        eval_strategy = []
+        if len(eval_trigger) == 0:
+            return
+        if len(eval_trigger) > 2:
+            tasks = []
+            with ThreadPoolExecutor(max_workers=4) as executor:
+                for trigger in eval_trigger:
+                    tasks.append((trigger.trigger_id, executor.submit(trigger.eval_trigger, trigger_event)))
+            for task in tasks:
+                if task[1].result():
+                    eval_strategy.extend(self.trigger_strategy_mapping[task[0]])
+        else:
+            for trigger in eval_trigger:
+                if trigger.eval_trigger(trigger_event):
+                    eval_strategy.extend(self.trigger_strategy_mapping[trigger.trigger_id])
+
         executable_lst = []
 
         max_priority: Optional[int] = None  # 最高优先级，数值上最小的那个
         for strategy in eval_strategy:
-            if strategy.eval(trigger_event, **factor_value) == AIActionStrategy.eval_result_execute:
+            eval_result = strategy.eval()
+            if eval_result == AIActionStrategy.eval_result_execute:
                 executable_lst.append(strategy)  # eval 得出了满足条件的策略，但是这并不意味这该策略一定会被执行
                 max_priority = strategy.strategy_priority if max_priority is None or strategy.strategy_priority < max_priority else max_priority
-        logger.info(f"AI {self.AID} receive event {trigger_event.event_name}, executable strategy {[s.strategy_name for s in executable_lst]}")
+            elif eval_result == AIActionStrategy.eval_result_remove:
+                # 策略可能因为过期等原因不需要再执行了
+                self.unbundle_trigger(strategy)
+        logger.info(
+            f"AI {self.AID} receive event {trigger_event.event_name}, executable strategy {[s.strategy_name for s in executable_lst]}")
 
         # 选择最高优先级的策略
         chosen_strategy = [s for s in executable_lst if s.strategy_priority == max_priority]
@@ -93,13 +203,16 @@ class AIStrategyManager:
             weight_lst = [s.weight for s in weight_strategy_lst]
             winner_strategy_lst.append(random.choices(weight_strategy_lst, weights=weight_lst, k=1)[0])
 
+        blue_print_instance = None
         for s in winner_strategy_lst:
-            for action in s.actions:
-                if action.pre_loading(trigger_event, **factor_value):
-                    self.action_queue.put((action, trigger_event))
+            blue_print_instance = self.activate_strategy(s, trigger_event)
             if not s.execute_count():
-                self.effective_strategy.remove(s)
-                eval_strategy.remove(s)
-                self.strategy_trigger_map[trigger_event.event_name] = eval_strategy
-                # todo 上报给事件监听中心，取消trigger事件
+                self.unbundle_trigger(s)
+        return blue_print_instance
 
+    def activate_strategy(self, strategy: AIActionStrategy, trigger_event: BaseEvent) -> Optional[BluePrintInstance]:
+        if strategy.action:
+            self.action_queue.put((strategy.action, trigger_event))
+            return None
+        if strategy.blue_print:
+            return strategy.blue_print
