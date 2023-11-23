@@ -1,9 +1,11 @@
 import logging
 import random
+import re
 from concurrent.futures import ThreadPoolExecutor
 from queue import Queue
 from typing import List, Dict, Optional
 
+from common_py.ai_toolkit.openAI import filter_brackets
 from common_py.client.azure_mongo import MongoDBClient
 from common_py.dto.ai_instance import AIBasicInformation
 from common_py.model.base import BaseEvent
@@ -132,15 +134,24 @@ class AIStrategyManager:
                     del self.trigger_map[trigger_id]
                     # todo 上报给事件监听中心，取消trigger事件
 
-    def receive_conversation_event(self, trigger_event: ConversationEvent) -> (List[Dict], Dict[str, str]):
-        # todo user intent 用户意图，是作为LUI是否需要触发的判定。LUI的启动应该交给LLM，而不是文本相似度
+    def receive_conversation_event(self, *trigger_events: ConversationEvent) -> (List[Dict], Dict[str, str]):
         # 此处应该根据候选trigger_ids, 找到对应的action入参，拼成function describe，然后调用LLM
         # LUI触发的依据是意图的吻合程度，因此没有优先级之分
-
-        active_trigger_ids = eval_lui_trigger(self.LUI_trigger_lst, trigger_event.message)
+        tasks = []
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            for event in trigger_events:
+                message_input = filter_brackets(event.message)
+                message_splited = re.split(r'[;.,?!]', message_input)
+                for message in message_splited:
+                    tasks.append(executor.submit(eval_lui_trigger, self.LUI_trigger_lst, message))
+        active_trigger_id_map = {}
+        for task in tasks:
+            triggered_lui_map = task.result()
+            if triggered_lui_map:
+                active_trigger_id_map.update(triggered_lui_map)
 
         potential_strategy_lst = []
-        for trigger_id in active_trigger_ids:
+        for trigger_id in active_trigger_id_map.keys():
             strategies = self.trigger_strategy_mapping.get(trigger_id, [])
             if len(strategies) == 0:
                 logger.warning(f"trigger {trigger_id} don't have any strategy")

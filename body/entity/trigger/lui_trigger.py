@@ -22,7 +22,7 @@ class LUITrigger(BaseTrigger):
     trigger_corpus: List[str]
 
 
-def eval_lui_trigger(potential_triggers: List[str], target_text: str) -> List[str]:
+def eval_lui_trigger(potential_triggers: List[str], target_text: str) -> Dict:
     results = query_vector_info(LUITriggerDto,
                                 target_text,
                                 meta_filter={'trigger_id': {'$in': potential_triggers}},
@@ -33,4 +33,4 @@ def eval_lui_trigger(potential_triggers: List[str], target_text: str) -> List[st
     trigger_id_map = {}
     for result in results:
         trigger_id_map[result.trigger_id] = True
-    return list(trigger_id_map.keys())
+    return trigger_id_map

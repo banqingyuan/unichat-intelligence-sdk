@@ -56,53 +56,53 @@ class PromptLoader:
             result = '\n'.join([item[1] for item in sorted_lst])
             return result
 
-    def find_useful_LUI(self, inputs: List[str],
-                        AI_info: AIBasicInformation,
-                        speaker_id: str,
-                        tracer: Tracer) -> Dict[str, bool]:
-        with tracer.span(name="find_useful_LUI"):
-            access_level = ['public']
-            if AI_info.UID == speaker_id:
-                access_level.append('private')
-            q = queue.Queue()
-            lui_results = {}
-            with ThreadPoolExecutor(max_workers=5) as executor:
-                for message_input in inputs:
-                    message_input = filter_brackets(message_input)
-                    result = re.split(r'[;.,?!]', message_input)
-                    for item in result:
-                        if len(item) < 2:
-                            continue
-                        executor.submit(self._query_lui_library_from_pgvector, item, AI_info.type, access_level, q)
-            while not q.empty():
-                res = q.get()
-                lui_results.update(res)
-            logger.debug(f"recall lui results: {[key for key in lui_results.keys()]}")
-            return lui_results
+    # def find_useful_LUI(self, inputs: List[str],
+    #                     AI_info: AIBasicInformation,
+    #                     speaker_id: str,
+    #                     tracer: Tracer) -> Dict[str, bool]:
+    #     with tracer.span(name="find_useful_LUI"):
+    #         access_level = ['public']
+    #         if AI_info.UID == speaker_id:
+    #             access_level.append('private')
+    #         q = queue.Queue()
+    #         lui_results = {}
+    #         with ThreadPoolExecutor(max_workers=5) as executor:
+    #             for message_input in inputs:
+    #                 message_input = filter_brackets(message_input)
+    #                 result = re.split(r'[;.,?!]', message_input)
+    #                 for item in result:
+    #                     if len(item) < 2:
+    #                         continue
+    #                     executor.submit(self._query_lui_library_from_pgvector, item, AI_info.type, access_level, q)
+    #         while not q.empty():
+    #             res = q.get()
+    #             lui_results.update(res)
+    #         logger.debug(f"recall lui results: {[key for key in lui_results.keys()]}")
+    #         return lui_results
 
-    def _query_lui_library_from_pgvector(self,
-                                         input_str: str,
-                                         AI_type: str,
-                                         access_level: List[str],
-                                         q: queue.Queue):
-        try:
-            lui_functions = {}
-            results: List = query_vector_info(
-                model=LUIUsecase,
-                input_data=input_str,
-                meta_filter={"$and": [
-                    {"AI_type": {"$eq": AI_type}},
-                    {"access_level": {"$in": access_level}}
-                ]},
-                top_k=3,
-                threshold=0.85,
-            )
-            results = [LUIUsecaseInfo(**item) for item in results]
-            for result in results:
-                lui_functions[result.function_name] = True
-            q.put_nowait(lui_functions)
-        except Exception as e:
-            logger.exception(e)
+    # def _query_lui_library_from_pgvector(self,
+    #                                      input_str: str,
+    #                                      AI_type: str,
+    #                                      access_level: List[str],
+    #                                      q: queue.Queue):
+    #     try:
+    #         lui_functions = {}
+    #         results: List = query_vector_info(
+    #             model=LUIUsecase,
+    #             input_data=input_str,
+    #             meta_filter={"$and": [
+    #                 {"AI_type": {"$eq": AI_type}},
+    #                 {"access_level": {"$in": access_level}}
+    #             ]},
+    #             top_k=3,
+    #             threshold=0.85,
+    #         )
+    #         results = [LUIUsecaseInfo(**item) for item in results]
+    #         for result in results:
+    #             lui_functions[result.function_name] = True
+    #         q.put_nowait(lui_functions)
+    #     except Exception as e:
+    #         logger.exception(e)
 
     def _get_prompt_block(self, idx: int, tpl: dict, chat_input: str, q: queue.Queue, **kwargs):
         # todo 注意一下chat_input为空的处理
