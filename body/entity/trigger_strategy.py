@@ -53,13 +53,16 @@ class AIActionStrategy:
         self.channel_name = kwargs['channel_name']
         self.action_queue: Queue = kwargs['action_queue']
 
+        memory_mgr = kwargs['memory_mgr']
+
         # 满足条件后需要执行的动作
         # todo Action单独一张表 剧本：ActionScript 单独一张表，蓝图单独一张表，触发单独一张表
         # 这里是触发的结构，触发可以绑定ActionNode，也可以绑定蓝图，但是不可以直接绑定Action
         if kwargs['action_type'] == StrategyActionType_BluePrint:
             self.blue_print = BluePrintManager().get_instance(kwargs['action_id'],
                                                               channel_name=self.channel_name,
-                                                              action_queue=self.action_queue)
+                                                              action_queue=self.action_queue,
+                                                              memory_mgr=memory_mgr)
         elif kwargs['action_type'] == StrategyActionType_Action:
             self.action = ActionNodeMgr().get_action_node(kwargs['action_id'])
         else:
@@ -165,6 +168,7 @@ class AIStrategyMgr:
             action_queue=kwargs['action_queue'],
             action_type=strategy_po.action_type,
             action_id=strategy_po.action_id,
+            memory_mgr=kwargs['memory_mgr'],
         )
 
     def __new__(cls, *args, **kwargs):

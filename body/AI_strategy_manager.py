@@ -21,6 +21,7 @@ from body.entity.trigger.lui_trigger import LUITrigger, eval_lui_trigger
 from body.entity.trigger.scene_trigger import SceneTrigger
 from body.entity.trigger.trigger_manager import TriggerMgr
 from body.entity.trigger_strategy import AIActionStrategy, build_strategy, AIStrategyMgr
+from memory_sdk.memory_manager import MemoryManager
 
 logger = wrapper_azure_log_handler(
     wrapper_std_output(
@@ -63,6 +64,8 @@ class AIStrategyManager:
         # All LUI trigger id
         self.LUI_trigger_lst: List[str] = []
 
+        self.memory_mgr: MemoryManager = kwargs['memory_mgr']
+
     def load(self):
         strategies_relation_info = self.mongodb_client.find_from_collection("AI_strategy_relation", filter={
             "AID": self.AID,
@@ -83,7 +86,8 @@ class AIStrategyManager:
         all_strategy_info = AIStrategyMgr().get_strategy_by_ids(
             all_strategy_id_lst,
             channel_name=self.channel_name,
-            action_queue=self.action_queue
+            action_queue=self.action_queue,
+            memory_mgr=self.memory_mgr
         )
 
         for strategy in all_strategy_info:
@@ -216,14 +220,20 @@ class AIStrategyManager:
 
         blue_print_instance = None
         for s in winner_strategy_lst:
-            blue_print_instance = self.activate_strategy(s, trigger_event)
+            blue_print_instance = self.activate_strategy(s.strategy_id, trigger_event)
             if not s.execute_count():
                 self.unbundle_trigger(s)
         return blue_print_instance
 
-    def activate_strategy(self, strategy: AIActionStrategy, trigger_event: BaseEvent) -> Optional[BluePrintInstance]:
+    def activate_strategy(self, strategy_id: str, trigger_event: BaseEvent, **kwargs) -> Optional[BluePrintInstance]:
+        strategy = self.effective_strategy.get(strategy_id, None)
+        if not strategy:
+            logger.error(f"Strategy {strategy_id} not found")
+            return None
         if strategy.action:
+            strategy.action.set_params(**kwargs)
             self.action_queue.put((strategy.action, trigger_event))
             return None
         if strategy.blue_print:
+            strategy.blue_print.set_params(**kwargs)
             return strategy.blue_print

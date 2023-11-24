@@ -24,9 +24,11 @@ class RouterNode(FunctionDescribe):
     1. 根据固定的已有条件，构造路由prompt，模板是固定的，参数是根据上下文组合的。因此用户不需要对Router进行任何配置。
     2. 一方编辑工具，编写脚本进行路由。todo 需要进一步设计。在这一版本实现一个简单点的。
     3. 用户设计，支持通过条件表达式控制路由。类似规则引擎
+    4. AI自由生成，校准，效果评估，保存复用
     """
     id: str
     router_type: str = RouterType_Anonymous
+    expect_event: str = None
     script_router: Optional[str] = None
     child_node_ids: Dict[str, List[str]]
 

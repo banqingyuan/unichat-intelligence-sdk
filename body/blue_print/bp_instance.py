@@ -7,6 +7,7 @@ from common_py.ai_toolkit.openAI import ChatGPTClient, Message, OpenAIChatRespon
 from common_py.client.azure_mongo import MongoDBClient
 from common_py.model.base import BaseEvent
 from common_py.model.chat import ConversationEvent
+from common_py.model.scene import SceneEvent
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
 from opencensus.trace import execution_context
 
@@ -16,6 +17,7 @@ from body.const import BPNodeType_Action, BPNodeType_Router
 from body.entity.action_node import ActionNode, ActionNodeMgr
 from body.entity.function_call import FunctionDescribe, Parameter
 from body.presist_object.bp_instance_po import load_all_bp_po, BluePrintPo
+from memory_sdk.memory_manager import MemoryManager
 
 logger = wrapper_azure_log_handler(
     wrapper_std_output(
@@ -23,6 +25,9 @@ logger = wrapper_azure_log_handler(
     )
 )
 
+BluePrintResult_Ignore = 'ignore'
+BluePrintResult_Executed = 'executed'
+BluePrintResult_Finished = 'finished'
 
 class FunctionCallException(Exception):
     pass
@@ -46,23 +51,28 @@ class BluePrintInstance:
     当两个节点产生连接，需要配置好上游出参和下游入参的映射关系，保持类型一致。
     一种例外的情况是，如果上游最后一步是function call, 只需要下游提供入参标准，上游映射由llm完成
     """
-    def __init__(self, **bp_po):
+    def __init__(self, **kwargs):
         try:
-            self.bp_id = bp_po['bp_id']
-            self.name = bp_po['name']
-            self.description = bp_po['description']
-            self.current_node = bp_po['portal_node']
+            self.bp_id = kwargs['bp_id']
+            self.name = kwargs['name']
+            self.description = kwargs['description']
+
+            portal_node_instance = self._get_node_instance(kwargs['portal_node'])
+            if not portal_node_instance:
+                raise Exception("Portal node not found")
+            self.portal_node = portal_node_instance
+            self.current_node = portal_node_instance
 
             # key is node_id, value is node type
             self.nodes_typ_idx: Dict[str, str] = {}
 
             # eg. {'上游节点id', {'下游节点id', {'上游出参': '下游入参'}}}
-            self.connection_mapping: Dict[str, Dict[str, Dict[str, str]]] = bp_po['connections']
+            self.connection_mapping: Dict[str, Dict[str, Dict[str, str]]] = kwargs['connections']
 
-            self._construct_blue_print(bp_po)
+            self._construct_blue_print(kwargs)
             self.action_queue: Optional[queue.Queue] = None
             self.llm_client = ChatGPTClient(temperature=0)
-            self.event_context: List[BaseEvent] = []
+            self.memory_mgr: MemoryManager = kwargs['memory_mgr']
             self.channel_name: str = ''
         except KeyError as e:
             logger.error(f"Missing key in blue print script: {e}")
@@ -79,7 +89,33 @@ class BluePrintInstance:
         for node in bp_po['router_nodes']:
             self.nodes_typ_idx[node['id']] = BPNodeType_Router
 
-    def execute(self, event: BaseEvent) -> str:
+    def start_bp(self, event: BaseEvent) -> (str, Optional[list]):
+        return self._execute(event)
+
+    def execute(self, event: BaseEvent) -> (str, Optional[list]):
+        if not isinstance(self.current_node, RouterNode):
+            raise Exception("Current node is not router node")
+
+        if self.current_node.script_router is not None:
+            # script_router expect a SceneEvent
+            return BluePrintResult_Ignore, None
+        else:
+            # then it must be a llm router
+            if not isinstance(event, ConversationEvent):
+                return self._collect_blue_print_fc_describe()
+
+        execute_status = self._execute(event)
+        return execute_status, None
+
+    def _collect_blue_print_fc_describe(self) -> (str, Optional[list]):
+        cancel = FunctionDescribe(
+            name='CancelCurrentBluePrintTask',
+            description=f'Current blue print task is: {self.description} \n '
+                        f'This function is called if the user directly indicates that they want to stop this task.',
+        )
+        return BluePrintResult_Ignore, [cancel.gen_function_call_describe()]
+
+    def _execute(self, event: BaseEvent) -> str:
         try:
             node = self.current_node
             if isinstance(node, RouterNode):
@@ -88,36 +124,36 @@ class BluePrintInstance:
                 next_node.set_params(**params.dict())
                 if isinstance(next_node, RouterNode):
                     self.current_node = next_node
-                    return self.execute(event)
+                    return self._execute(event)
                 elif isinstance(next_node, ActionNode):
                     # 在蓝图中进入Action节点，不需要前置判断
                     # if next_node.pre_loading(event):
                     self.action_queue.put((next_node, event))
                     next_router_node = self._get_child_node_of_action_node(next_node.id)
                     if not next_router_node:
-                        return ''
+                        return BluePrintResult_Finished
                     self.current_node = next_router_node
-                    return self.current_node.id
+                    return BluePrintResult_Executed
             if isinstance(node, ActionNode):
                 self.action_queue.put((node, event))
                 next_node = self._get_child_node_of_action_node(node.id)
                 if not next_node:
                     return ''
                 self.current_node = next_node
-                return next_node.id
+                return BluePrintResult_Executed
         except Exception as e:
             # todo 退出蓝图
             logger.exception(e)
-            return ''
-
-    def add_event_context(self, event: BaseEvent):
-        self.event_context.append(event)
+            return BluePrintResult_Finished
 
     def gen_function_call_describe(self) -> Optional[Dict]:
-        node = self._get_node_instance(self.current_node)
+        node = self.current_node
         if isinstance(node, ActionNode):
             return node.gen_function_call_describe()
         return None
+
+    def set_params(self, **kwargs):
+        self.portal_node.set_params(**kwargs)
 
     def _execute_router(self, node: RouterNode, trigger_event: BaseEvent) -> (str, Parameter):
         # 首先判断是否使用脚本路由，如果不使用，默认使用llm路由
@@ -158,7 +194,7 @@ class BluePrintInstance:
     def _execute_llm_router(self, router: RouterNode, trigger_event: BaseEvent, shared_conditions: str = None) -> (str, Parameter):
         mission_purpose = self.description
         known_conditions = ''
-        for event in self.event_context:
+        for event in self.memory_mgr.get_event_list(BaseEvent, 6):
             known_conditions += event.description() + '\n'
         if shared_conditions:
             known_conditions += shared_conditions + '\n'
@@ -253,8 +289,8 @@ class BluePrintManager:
                 return None
             channel_name = context_info.get('channel_name', None)
             llm_client = ChatGPTClient(temperature=0)
-            action_queue = context_info.get('action_queue', None)
-            event_context = context_info.get('event_context', [])
+            action_queue = context_info['action_queue']
+            memory_mgr = context_info['memory_mgr']
             if not channel_name or not action_queue:
                 logger.error(f"channel_name or action_queue not found")
                 return None
@@ -269,7 +305,7 @@ class BluePrintManager:
                 channel_name=channel_name,
                 llm_client=llm_client,
                 action_queue=action_queue,
-                event_context=event_context,
+                memory_mgr=memory_mgr,
             )
 
         except Exception as e:
