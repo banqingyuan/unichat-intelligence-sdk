@@ -28,6 +28,7 @@ logger = wrapper_azure_log_handler(
 BluePrintResult_Ignore = 'ignore'
 BluePrintResult_Executed = 'executed'
 BluePrintResult_Finished = 'finished'
+BluePrintResult_SelfKill = 'self_kill'
 
 class FunctionCallException(Exception):
     pass
@@ -51,6 +52,9 @@ class BluePrintInstance:
     当两个节点产生连接，需要配置好上游出参和下游入参的映射关系，保持类型一致。
     一种例外的情况是，如果上游最后一步是function call, 只需要下游提供入参标准，上游映射由llm完成
     """
+
+    self_cancel_limit = 5
+
     def __init__(self, **kwargs):
         try:
             self.bp_id = kwargs['bp_id']
@@ -62,6 +66,8 @@ class BluePrintInstance:
                 raise Exception("Portal node not found")
             self.portal_node = portal_node_instance
             self.current_node = portal_node_instance
+
+            self.unactive_time_count = 0
 
             # key is node_id, value is node type
             self.nodes_typ_idx: Dict[str, str] = {}
@@ -97,13 +103,17 @@ class BluePrintInstance:
             raise Exception("Current node is not router node")
 
         if self.current_node.script_router is not None:
-            # script_router expect a SceneEvent
-            return BluePrintResult_Ignore, None
+            if isinstance(event, ConversationEvent):
+                # script_router expect a SceneEvent
+                return BluePrintResult_Ignore, None
         else:
             # then it must be a llm router
             if not isinstance(event, ConversationEvent):
                 return self._collect_blue_print_fc_describe()
-
+            else:
+                self.unactive_time_count += 1
+                if self.unactive_time_count > (self.self_cancel_limit + 1):
+                    return BluePrintResult_SelfKill, None
         execute_status = self._execute(event)
         return execute_status, None
 
@@ -120,6 +130,8 @@ class BluePrintInstance:
             node = self.current_node
             if isinstance(node, RouterNode):
                 next_node_id, params = self._execute_router(node, event)
+                if next_node_id != node.id:
+                    self.unactive_time_count = 0
                 next_node = self._get_node_instance(next_node_id)
                 next_node.set_params(**params.dict())
                 if isinstance(next_node, RouterNode):
@@ -144,7 +156,7 @@ class BluePrintInstance:
         except Exception as e:
             # todo 退出蓝图
             logger.exception(e)
-            return BluePrintResult_Finished
+            return BluePrintResult_SelfKill
 
     def gen_function_call_describe(self) -> Optional[Dict]:
         node = self.current_node
