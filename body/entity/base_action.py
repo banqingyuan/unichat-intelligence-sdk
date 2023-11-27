@@ -1,7 +1,7 @@
 import logging
 import threading
 from abc import abstractmethod
-from typing import Dict, Type
+from typing import Dict, Type, ClassVar
 
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
 from body.entity.function_call import FunctionDescribe
@@ -26,6 +26,8 @@ class BaseAction(FunctionDescribe):
     每种action需要的参数种类是固定的，在sharing_params中提供
     参数生成逻辑不一而足，统一在action_script中把必要参数填充进sharing_params
     """
+    action_name: ClassVar[str]
+
     @abstractmethod
     def execute(self, **kwargs) -> bool:
         """
@@ -46,8 +48,9 @@ class BaseActionMgr:
             BaseActionMgr._ready = True
             self.action_collection: Dict[str, Type[BaseAction]] = {}
 
-    def register_action(self, action: Type[BaseAction]):
-        self.action_collection[action.name] = action
+    def register_action(self, *action_lst: Type[BaseAction]):
+        for action in action_lst:
+            self.action_collection[action.action_name] = action
 
     def action_factory(self, action_name: str, **kwargs) -> BaseAction:
         try:

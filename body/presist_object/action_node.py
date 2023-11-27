@@ -1,10 +1,9 @@
-from typing import List, Optional, Dict
+from typing import Optional, Dict
 from common_py.client.azure_mongo import MongoDBClient
 from pydantic import BaseModel
 import logging
 from common_py.utils.logger import wrapper_std_output, wrapper_azure_log_handler
 
-from body.entity.function_call import Parameter
 
 logger = wrapper_azure_log_handler(
     wrapper_std_output(
@@ -23,7 +22,7 @@ class ActionNodePo(BaseModel):
 
     # action_program 以后是由无代码拖拽生成，类似scratch
     action_type: str
-    action_name: str
+    action_id: str
     description: str
 
 

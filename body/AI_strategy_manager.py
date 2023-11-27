@@ -15,12 +15,11 @@ from common_py.utils.channel.util import get_AID_from_channel
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
 
 from body.blue_print.bp_instance import BluePrintInstance
-from body.const import TriggerType_LUI, TriggerType_Scene
 from body.entity.trigger.base_tirgger import BaseTrigger
 from body.entity.trigger.lui_trigger import LUITrigger, eval_lui_trigger
 from body.entity.trigger.scene_trigger import SceneTrigger
 from body.entity.trigger.trigger_manager import TriggerMgr
-from body.entity.trigger_strategy import AIActionStrategy, build_strategy, AIStrategyMgr
+from body.entity.trigger_strategy import AIActionStrategy, AIStrategyMgr
 from memory_sdk.memory_manager import MemoryManager
 
 logger = wrapper_azure_log_handler(

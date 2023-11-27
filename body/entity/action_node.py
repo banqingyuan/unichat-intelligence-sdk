@@ -44,9 +44,9 @@ class ActionNode(FunctionDescribe):
         super().__init__(**kwargs)
 
         if self.action_type == ActionType_Atom:
-            self.action_Atom = ActionProgramMgr().get_action_atom(kwargs['action_name'])
+            self.action_Atom = ActionProgramMgr().get_action_atom(kwargs['action_id'])
         elif self.action_type == ActionType_Program:
-            self.action_program = ActionProgramMgr().get_action_program(kwargs['action_name'])
+            self.action_program = ActionProgramMgr().get_action_program(kwargs['action_id'])
 
     def set_params(self, **params):
         if self.action_type == ActionType_Atom:
