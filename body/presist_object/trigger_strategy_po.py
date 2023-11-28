@@ -30,8 +30,6 @@ class AITriggerStrategyPo(BaseModel):
     instance_frequency: str = '1'
     # 策略执行的概率(1, 100)
     possibility: str = '100'
-    # 策略生效的条件
-    conditions: str = ''
     # 策略执行权重
     weight: Optional[str] = None
 
@@ -42,7 +40,7 @@ class AITriggerStrategyPo(BaseModel):
 def load_all_AI_strategy_po() -> List[AITriggerStrategyPo]:
     strategy_po_lst = []
     mongodb_client = MongoDBClient()
-    strategies = mongodb_client.find_from_collection("AI_action_strategy", filter={})
+    strategies = mongodb_client.find_from_collection("AI_trigger_strategy", filter={})
     if not strategies:
         return []
     for strategy in strategies:
