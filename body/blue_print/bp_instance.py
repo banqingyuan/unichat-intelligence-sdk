@@ -141,14 +141,14 @@ class BluePrintInstance:
                     # 在蓝图中进入Action节点，不需要前置判断
                     # if next_node.pre_loading(event):
                     self.action_queue.put((next_node, event))
-                    next_router_node = self._get_child_node_of_action_node(next_node.id)
+                    next_router_node = self._get_child_node_of_action_node(next_node.id, event.UUID, event.channel_name)
                     if not next_router_node:
                         return BluePrintResult_Finished
                     self.current_node = next_router_node
                     return BluePrintResult_Executed
             if isinstance(node, ActionNode):
                 self.action_queue.put((node, event))
-                next_node = self._get_child_node_of_action_node(node.id)
+                next_node = self._get_child_node_of_action_node(node.id, event.UUID, event.channel_name)
                 if not next_node:
                     return ''
                 self.current_node = next_node
@@ -246,7 +246,7 @@ class BluePrintInstance:
         else:
             raise FunctionCallException(f"Function call failed with response {resp.json()}")
 
-    def _get_child_node_of_action_node(self, node_id) -> Optional[RouterNode]:
+    def _get_child_node_of_action_node(self, node_id, UUID: str, channel_name: str) -> Optional[RouterNode]:
         next_round_node_id = self._get_all_child_node_id(node_id)
         if len(next_round_node_id) == 0:
             return None

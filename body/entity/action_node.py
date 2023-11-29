@@ -29,16 +29,13 @@ class ActionNode(FunctionDescribe):
     id: str
 
     queuing_time: int = 1
-    system_hint: Optional[SystemHintEvent] = None
+    system_hint: str = None
     tracer_header: dict
 
     # action_program 以后是由无代码拖拽生成，类似scratch ActionType_Atom/ActionType_Program
     action_type: str = ''
     action_program: Optional[ActionProgram]
     action_Atom: Optional[ActionAtom]
-    channel_name: str
-
-    UUID: str
 
     def __init__(self,  **kwargs):
         super().__init__(**kwargs)
@@ -75,25 +72,21 @@ class ActionNodeMgr:
             self.action_node_po_dict: Dict[str, ActionNodePo] = {}
             self.refresh()
 
-    def get_action_node(self, node_id: str, **context_info) -> Optional[ActionNode]:
+    def get_action_node(self, node_id: str) -> Optional[ActionNode]:
         try:
             action_node_po = self.action_node_po_dict.get(node_id, None)
-            channel_name = context_info.get('channel_name', None)
-            UUID = context_info.get('UUID', None)
-            if not action_node_po or not channel_name or not UUID:
-                logger.error(f'get_action_node failed: node_id: {node_id}, channel_name: {channel_name},UUID: {UUID}')
+            if not action_node_po:
+                logger.error(f'get_action_node failed: node_id: {node_id}')
                 return None
 
-            sys_hint_event = new_system_hint_event(channel_name, action_node_po.system_prompt, UUID) if action_node_po.system_prompt and action_node_po.system_prompt != '' else None
             return ActionNode(
                 id=action_node_po.node_id,
                 action_type=action_node_po.action_type,
-                action_name=action_node_po.action_name,
+                action_id=action_node_po.action_id,
                 name=action_node_po.node_name,
                 description=action_node_po.description,
                 queuing_time=int(action_node_po.queuing_time),
-                system_hint=sys_hint_event,
-                UUID=UUID,
+                system_hint=action_node_po.system_prompt,
             )
         except Exception as e:
             logger.exception(e)
