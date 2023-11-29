@@ -1,7 +1,10 @@
 import logging
 import threading
+import time
 from typing import Dict, Optional
 
+from common_py.client.azure_mongo import MongoDBClient
+from common_py.client.pg import PgEngine
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
 
 from body.entity.trigger.base_tirgger import BaseTrigger
@@ -32,6 +35,9 @@ class TriggerMgr:
 
     def _refresh_trigger(self):
         for trigger_po in self.LUI_triggers_po_lst:
+            if trigger_po.loaded_to_vector != 'true':
+                trigger_po.loaded_to_vector = 'true'
+                trigger_po.save_to_vdb()
             self.triggers[trigger_po.trigger_id] = LUITrigger(
                 trigger_id=trigger_po.trigger_id,
                 trigger_name=trigger_po.trigger_name,
@@ -46,6 +52,7 @@ class TriggerMgr:
     def refresh(self):
         # refresh every 2 minutes
         try:
+            logger.info("Start to refresh trigger")
             self._refresh_trigger_po()
             self._refresh_trigger()
         except Exception as e:
@@ -76,3 +83,16 @@ def _build_lui_trigger(trigger: Dict) -> LUITrigger:
         trigger_name=trigger['trigger_name'],
         trigger_corpus=trigger['trigger_corpus']
     )
+
+if __name__ == '__main__':
+    pg_config = {
+        "host": "c.postgre-east.postgres.database.azure.com",
+        # "host": "c-unichat-postgres-prod.q2t5np375m754a.postgres.cosmos.azure.com",
+        "user": "citus",
+        "db_name": "citus"
+    }
+    PgEngine(**pg_config)
+    MongoDBClient(DB_NAME="unichat-backend")
+    TriggerMgr()
+    while True:
+        time.sleep(1)

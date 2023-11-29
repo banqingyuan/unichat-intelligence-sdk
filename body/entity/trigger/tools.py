@@ -8,7 +8,6 @@ from common_py.client.pg import delete_records_by_filter, batch_insert_vector, P
 from common_py.dto.lui_trigger import LUITriggerInfo
 from common_py.dto.lui_trigger import LUITrigger as LUITriggerDto
 
-from body.entity.trigger.lui_trigger import LUITriggerMgr
 from body.entity.trigger.lui_trigger import LUITrigger
 
 
@@ -41,7 +40,7 @@ def create_new_lui_trigger_info(id, trigger_name, trigger_id, corpus_text: str) 
     embedding = embedding_client(input=corpus_text)
     return LUITriggerInfo(id=id,
                           trigger_name=trigger_name,
-                          tirgger_id=trigger_id,
+                          trigger_id=trigger_id,
                           corpus_text=corpus_text,
                           embedding=embedding)
 
