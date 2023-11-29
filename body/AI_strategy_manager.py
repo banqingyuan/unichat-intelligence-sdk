@@ -66,10 +66,13 @@ class AIStrategyManager:
         self.memory_mgr: MemoryManager = kwargs['memory_mgr']
 
     def load(self):
-        strategies_relation_info = self.mongodb_client.find_from_collection("AI_strategy_relation", filter={
+        strategies_relation_info_lst = self.mongodb_client.find_from_collection("AI_strategy_relation", filter={
             "AID": self.AID,
         })
-
+        if len(strategies_relation_info_lst) == 0:
+            logger.warning(f"AI {self.AID} don't have any strategy")
+            return
+        strategies_relation_info = strategies_relation_info_lst[0]
         all_strategy_ids = {}
         if 'strategy_packages' in strategies_relation_info:
             strategy_package_ids = strategies_relation_info['strategy_packages']
@@ -142,7 +145,7 @@ class AIStrategyManager:
                     del self.trigger_map[trigger_id]
                     # todo 上报给事件监听中心，取消trigger事件
 
-    def receive_conversation_event(self, *trigger_events: ConversationEvent) -> (List[Dict], Dict[str, str]):
+    def receive_conversation_event(self, trigger_events: List[ConversationEvent]) -> (List[Dict], Dict[str, str]):
         # 此处应该根据候选trigger_ids, 找到对应的action入参，拼成function describe，然后调用LLM
         # LUI触发的依据是意图的吻合程度，因此没有优先级之分
         tasks = []
@@ -169,7 +172,7 @@ class AIStrategyManager:
             strategy = strategies[0]
             potential_strategy_lst.append(strategy)
         if len(potential_strategy_lst) == 0:
-            return []
+            return [], {}
         func_describe_lst = []
         describe_strategy_idx = {}
         for strategy in potential_strategy_lst:

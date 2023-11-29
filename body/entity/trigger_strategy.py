@@ -38,17 +38,17 @@ class AIActionStrategy:
         # 策略优先级，同时命中的情况下，优先级高的生效 (0-500) 越小优先级越高
         self.strategy_priority = int(kwargs['strategy_priority'])
         # 策略生效时间
-        self.start_time = int(kwargs['start_time']) if 'start_time' in kwargs else 0
+        self.start_time = int(kwargs['start_time']) if kwargs.get('start_time', None) else 0
         # 策略失效时间
-        self.end_time = int(kwargs['end_time']) if 'end_time' in kwargs else 0
+        self.end_time = int(kwargs['end_time']) if kwargs.get('end_time', None) else 0
         # 策略在每个AI的生效次数 once/everyTime 暂不支持
         # self.frequency = kwargs.get('frequency', None)
         # 策略在每个AI实例的生效次数 int default 1, -1 means unlimited
-        self.instance_frequency = int(kwargs['instance_frequency']) if 'instance_frequency' in kwargs else 1
+        self.instance_frequency = int(kwargs['instance_frequency']) if kwargs.get('instance_frequency', None) else 1
         # 策略执行的概率(1, 100)
-        self.possibility = int(kwargs['possibility']) if 'possibility' in kwargs else 100
+        self.possibility = int(kwargs['possibility']) if kwargs.get('possibility', None) else 100
         # 策略执行权重
-        self.weight: Optional[int] = int(kwargs['weight']) if 'weight' in kwargs else None
+        self.weight: Optional[int] = int(kwargs['weight']) if kwargs.get('weight', None) else None
 
         self.channel_name = kwargs['channel_name']
         self.action_queue: Queue = kwargs['action_queue']
