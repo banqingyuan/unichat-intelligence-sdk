@@ -80,6 +80,11 @@ class AIStrategyManager:
             for strategy_id in strategy_id_list:
                 # 放map里去重
                 all_strategy_ids[strategy_id] = True
+        if 'strategy_list' in strategies_relation_info:
+            strategy_id_list = strategies_relation_info['strategy_list']
+            for strategy_id in strategy_id_list:
+                # 放map里去重
+                all_strategy_ids[strategy_id] = True
 
         all_strategy_id_lst = [strategy_id for strategy_id in all_strategy_ids.keys()]
         all_strategy_info = AIStrategyMgr().get_strategy_by_ids(
