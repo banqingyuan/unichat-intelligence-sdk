@@ -150,7 +150,8 @@ class ActionProgramMgr:
                 action_engine=action_instance,
                 description=po.atom_description
             )
-            action_atom.set_params(**po.action_preset_args)
+            if po.action_preset_args:
+                action_atom.set_params(**po.action_preset_args)
             return action_atom
         except Exception as e:
             logger.exception(e)

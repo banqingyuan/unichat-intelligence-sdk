@@ -30,7 +30,6 @@ class ActionNode(FunctionDescribe):
 
     queuing_time: int = 1
     system_hint: str = None
-    tracer_header: dict
 
     # action_program 以后是由无代码拖拽生成，类似scratch ActionType_Atom/ActionType_Program
     action_type: str = ''
@@ -100,8 +99,8 @@ class ActionNodeMgr:
         threading.Timer(120, self.refresh).start()
 
     def __new__(cls, *args, **kwargs):
-        if not hasattr(ActionProgramMgr, "_instance"):
-            with ActionProgramMgr._instance_lock:
-                if not hasattr(ActionProgramMgr, "_instance"):
-                    ActionProgramMgr._instance = object.__new__(cls)
-        return ActionProgramMgr._instance
+        if not hasattr(ActionNodeMgr, "_instance"):
+            with ActionNodeMgr._instance_lock:
+                if not hasattr(ActionNodeMgr, "_instance"):
+                    ActionNodeMgr._instance = object.__new__(cls)
+        return ActionNodeMgr._instance

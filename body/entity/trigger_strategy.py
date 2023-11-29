@@ -23,7 +23,7 @@ logger = wrapper_azure_log_handler(
 
 
 class AIActionStrategy:
-    must_provide = ['strategy_id', 'strategy_name', 'strategy_priority', 'start_time', 'end_time', 'action_id', 'action_type']
+    must_provide = ['strategy_id', 'strategy_name', 'strategy_priority', 'start_time', 'end_time']
     eval_result_execute = 'execute'
     eval_result_ignore = 'ignore'
     eval_result_remove = 'remove'

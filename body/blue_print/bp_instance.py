@@ -133,7 +133,8 @@ class BluePrintInstance:
                 if next_node_id != node.id:
                     self.unactive_time_count = 0
                 next_node = self._get_node_instance(next_node_id)
-                next_node.set_params(**params.dict())
+                if params:
+                    next_node.set_params(**params.dict())
                 if isinstance(next_node, RouterNode):
                     self.current_node = next_node
                     return self._execute(event)
@@ -236,7 +237,7 @@ class BluePrintInstance:
                 func = function_name_to_instance.get(resp.function_name, None)
                 if not func:
                     raise FunctionCallException(f"Function name {resp.function_name} not found with response {resp.json()}")
-                if resp.arguments and len(resp.arguments) > 0:
+                if resp.arguments:
                     func.set_params(**resp.arguments)
                 # params 的引用持有不会影响到func的释放
                 params = func.parameters
