@@ -6,7 +6,7 @@ from typing import List, Dict, Optional
 
 from common_py.client.azure_mongo import MongoDBClient
 from common_py.dto.ai_instance import AIBasicInformation
-from common_py.model.scene import SceneEvent
+from common_py.model.scene.scene import SceneEvent
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
 from action_strategy.strategy import AIActionStrategy, build_strategy
 
