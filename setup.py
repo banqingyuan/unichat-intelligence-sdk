@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='unichat-intelligence-sdk',
-    version='all_feat_without_bp:0.1.0',
+    version='0.2.0',
     packages=find_packages(),
     package_data={"unichat-intelligence-sdk": ["prompt_factory/tpl/*.yml"]},
     include_package_data=True,  # 这是关键：确保包含MANIFEST.in中指定的所有文件

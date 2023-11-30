@@ -4,7 +4,7 @@ import threading
 import time
 from typing import Optional
 
-from common_py.model.scene import SceneEvent
+from common_py.model.scene.scene import SceneEvent
 from common_py.model.scene.touch_event import TouchEvent
 from common_py.utils.logger import wrapper_std_output, wrapper_azure_log_handler
 from memory_sdk.hippocampus import Hippocampus
