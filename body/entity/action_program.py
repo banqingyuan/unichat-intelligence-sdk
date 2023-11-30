@@ -20,6 +20,7 @@ logger = wrapper_azure_log_handler(
 class ActionAtom(FunctionDescribe):
     """
     原子动作，由此构成一个自然连贯的动作组合
+    ActionAtom中使用的 FunctionDescribe中的入参需求可以继承action_engine
     """
     # 同一种动作，在不同的编排中的id都是不同的，但只需保证全剧本中唯一即可。
     atom_id: str
@@ -43,11 +44,15 @@ class ActionAtom(FunctionDescribe):
         logger.info(f"set output args for {self.atom_id}: {output_args}")
         self.set_output_params(**output_args)
 
+    def gen_function_call_describe(self):
+        return self.action_engine.gen_function_call_describe()
+
 
 class ActionProgram(FunctionDescribe):
     """
     原子动作的组合编排，由此构成一个自然连贯的动作组合
     可以被蓝图动作引用，也可以由LUI或触发器直接引用。
+    program 使用的 FunctionDescribe中的入参需求需要自己编辑
     """
     action_program_id: str
 

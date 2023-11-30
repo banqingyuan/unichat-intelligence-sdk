@@ -60,6 +60,12 @@ class ActionNode(FunctionDescribe):
         elif self.action_type == ActionType_Program:
             return self.action_program.execute()
 
+    def gen_function_call_describe(self):
+        if self.action_type == ActionType_Atom:
+            return self.action_Atom.gen_function_call_describe()
+        elif self.action_type == ActionType_Program:
+            return self.action_program.gen_function_call_describe()
+
 
 class ActionNodeMgr:
     _instance_lock = threading.Lock()
