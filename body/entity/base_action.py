@@ -3,6 +3,7 @@ import threading
 from abc import abstractmethod
 from typing import Dict, Type, ClassVar
 
+from common_py.model.base import BaseEvent
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
 from body.entity.function_call import FunctionDescribe
 
@@ -29,7 +30,7 @@ class BaseAction(FunctionDescribe):
     action_name: ClassVar[str]
 
     @abstractmethod
-    def execute(self, **kwargs) -> bool:
+    def execute(self, trigger_event: BaseEvent) -> bool:
         """
         执行动作，bool表示是否可以执行后续动作, 如果存在阻断性错误则False
         """
