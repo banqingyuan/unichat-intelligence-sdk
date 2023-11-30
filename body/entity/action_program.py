@@ -47,6 +47,9 @@ class ActionAtom(FunctionDescribe):
     def gen_function_call_describe(self):
         return self.action_engine.gen_function_call_describe()
 
+    def set_params(self, **kwargs):
+        self.action_engine.set_params(**kwargs)
+
 
 class ActionProgram(FunctionDescribe):
     """
