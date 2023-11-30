@@ -2,7 +2,7 @@ import logging
 
 from common_py.dto.ai_instance import InstanceMgr, AIBasicInformation
 from common_py.dto.user import UserInfoMgr, UserBasicInformation
-from common_py.model.scene import SceneEvent
+from common_py.model.scene.scene import SceneEvent
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
 
 from body.entity.trigger.base_tirgger import BaseTrigger

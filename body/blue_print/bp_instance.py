@@ -7,7 +7,6 @@ from common_py.ai_toolkit.openAI import ChatGPTClient, Message, OpenAIChatRespon
 from common_py.client.azure_mongo import MongoDBClient
 from common_py.model.base import BaseEvent
 from common_py.model.chat import ConversationEvent
-from common_py.model.scene import SceneEvent
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
 from opencensus.trace import execution_context
 

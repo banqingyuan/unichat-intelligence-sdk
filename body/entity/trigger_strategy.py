@@ -5,9 +5,6 @@ import time
 from queue import Queue
 from typing import Optional, Dict, List
 
-from common_py.model.base import BaseEvent
-from common_py.model.chat import ConversationEvent
-from common_py.model.scene import SceneEvent
 from common_py.utils.logger import wrapper_std_output, wrapper_azure_log_handler
 
 from body.blue_print.bp_instance import BluePrintManager
