@@ -52,7 +52,7 @@ class AIStrategyManager:
         self.effective_strategy: Dict[str, AIActionStrategy] = {}
 
         # event_name -> trigger_id
-        self.scene_name_to_trigger: Dict[str, List[SceneTrigger]] = {}
+        self.scene_event_name_to_trigger: Dict[str, List[SceneTrigger]] = {}
 
         # trigger_id to trigger
         self.trigger_map: Dict[str, BaseTrigger] = {}
@@ -120,9 +120,9 @@ class AIStrategyManager:
                 lui_trigger_map[trigger_id] = trigger
 
             if isinstance(trigger, SceneTrigger):
-                if trigger.trigger_name not in self.scene_name_to_trigger:
-                    self.scene_name_to_trigger[trigger.trigger_name] = []
-                self.scene_name_to_trigger[trigger.trigger_name].append(trigger)
+                if trigger.event_name not in self.scene_event_name_to_trigger:
+                    self.scene_event_name_to_trigger[trigger.event_name] = []
+                self.scene_event_name_to_trigger[trigger.event_name].append(trigger)
 
         self.LUI_trigger_lst = list(lui_trigger_map.keys())
 
@@ -139,8 +139,8 @@ class AIStrategyManager:
                         if trigger_id in self.LUI_trigger_lst:
                             self.LUI_trigger_lst.remove(trigger_id)
                     elif isinstance(trigger, SceneTrigger):
-                        if trigger.trigger_name in self.scene_name_to_trigger:
-                            self.scene_name_to_trigger[trigger.trigger_name].remove(trigger)
+                        if trigger.event_name in self.scene_event_name_to_trigger:
+                            self.scene_event_name_to_trigger[trigger.event_name].remove(trigger)
 
                     del self.trigger_map[trigger_id]
                     # todo 上报给事件监听中心，取消trigger事件
@@ -184,7 +184,7 @@ class AIStrategyManager:
 
     def receive_scene_event(self, trigger_event: SceneEvent) -> Optional[BluePrintInstance]:
 
-        eval_trigger = self.scene_name_to_trigger.get(trigger_event.event_name, [])
+        eval_trigger = self.scene_event_name_to_trigger.get(trigger_event.event_name, [])
         eval_strategy = []
         if len(eval_trigger) == 0:
             return

@@ -23,6 +23,8 @@ class SceneTriggerPo(BaseModel):
     type = 'scene_trigger'
     trigger_id: str
     trigger_name: str
+    event_name: str
+    condition_script: str = None
 
 
 class LUITriggerPo(BaseModel):
@@ -101,7 +103,9 @@ def load_all_trigger_po() -> (List, List):
 def _build_scene_trigger_po(trigger: Dict) -> SceneTriggerPo:
     return SceneTriggerPo(
         trigger_id=trigger['trigger_id'],
-        trigger_name=trigger['trigger_name']
+        trigger_name=trigger['trigger_name'],
+        event_name=trigger['event_name'],
+        condition_script=trigger['condition_script']
     )
 
 

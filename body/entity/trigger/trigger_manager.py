@@ -46,7 +46,9 @@ class TriggerMgr:
         for trigger_po in self.scene_triggers_po_lst:
             self.triggers[trigger_po.trigger_id] = SceneTrigger(
                 trigger_id=trigger_po.trigger_id,
-                trigger_name=trigger_po.trigger_name
+                trigger_name=trigger_po.trigger_name,
+                event_name=trigger_po.event_name,
+                condition_script=trigger_po.condition_script
             )
 
     def refresh(self):
@@ -73,7 +75,9 @@ class TriggerMgr:
 def _build_scene_trigger(trigger: Dict) -> SceneTrigger:
     return SceneTrigger(
         trigger_id=trigger['trigger_id'],
-        trigger_name=trigger['trigger_name']
+        trigger_name=trigger['trigger_name'],
+        event_name=trigger['event_name'],
+        condition_script=trigger['condition_script']
     )
 
 

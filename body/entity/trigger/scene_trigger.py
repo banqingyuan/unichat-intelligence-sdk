@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 from common_py.dto.ai_instance import InstanceMgr, AIBasicInformation
 from common_py.dto.user import UserInfoMgr, UserBasicInformation
@@ -20,10 +21,11 @@ class SceneTrigger(BaseTrigger):
     typ = 'scene_trigger'
     trigger_name: str
     trigger_id: str
-    condition_script: str
+    condition_script: Optional[str] = None
+    event_name: str
 
     def eval_trigger(self, trigger_event: SceneEvent) -> bool:
-        if trigger_event.event_name != self.trigger_name:
+        if trigger_event.event_name != self.event_name:
             return False
         if not self.condition_script or self.condition_script.strip() == "":
             return True
