@@ -18,7 +18,6 @@ class BPRouterPo(BaseModel):
     router_name: str
     description: str
     router_type: str = None
-    child_node_ids: Dict[str, List[str]]
     script_router: str = None
 
 

@@ -232,15 +232,13 @@ class AIStrategyManager:
                 self.unbundle_trigger(s)
         return blue_print_instance
 
-    def activate_strategy(self, strategy_id: str, trigger_event: BaseEvent, **kwargs) -> Optional[BluePrintInstance]:
+    def activate_strategy(self, strategy_id: str, trigger_event: BaseEvent) -> Optional[BluePrintInstance]:
         strategy = self.effective_strategy.get(strategy_id, None)
         if not strategy:
             logger.error(f"Strategy {strategy_id} not found")
             return None
         if strategy.action:
-            strategy.action.set_params(**kwargs)
             self.action_queue.put((strategy.action, trigger_event))
             return None
         if strategy.blue_print:
-            strategy.blue_print.set_params(**kwargs)
             return strategy.blue_print

@@ -5,6 +5,8 @@ from typing import Dict, Optional, List, Union
 
 from common_py.ai_toolkit.openAI import ChatGPTClient, Message, OpenAIChatResponse
 from common_py.client.azure_mongo import MongoDBClient
+from common_py.dto.ai_instance import AIBasicInformation, InstanceMgr
+from common_py.dto.user import UserBasicInformation, UserInfoMgr
 from common_py.model.base import BaseEvent
 from common_py.model.chat import ConversationEvent
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
@@ -16,6 +18,8 @@ from body.const import BPNodeType_Action, BPNodeType_Router
 from body.entity.action_node import ActionNode, ActionNodeMgr
 from body.entity.function_call import FunctionDescribe, Parameter
 from body.presist_object.bp_instance_po import load_all_bp_po, BluePrintPo
+from memory_sdk.hippocampus import Hippocampus, HippocampusMgr
+from memory_sdk.memory_entity import UserMemoryEntity
 from memory_sdk.memory_manager import MemoryManager
 
 logger = wrapper_azure_log_handler(
@@ -186,11 +190,31 @@ class BluePrintInstance:
         input_params = {
             'optional_child_node': nodes,
             'trigger_event': event,
-            'tracer': execution_context.get_opencensus_tracer(),
+            # 'tracer': execution_context.get_opencensus_tracer(),
             'next_node': None,
             'output_args_dict': {},
             'shared_conditions': '',
+
+            'user_info': None,
+            'AI_info': None,
+            'hippocampus': None,
+            'AI_memory_of_user': None,
         }
+
+        UID = event.get_UID()
+        if UID:
+            user_info: UserBasicInformation = UserInfoMgr().get_instance_info(UID)
+            input_params['user_info'] = user_info
+        AID = event.AID
+        if AID:
+            AI_info: AIBasicInformation = InstanceMgr().get_instance_info(AID)
+            input_params['AI_info'] = AI_info
+        if UID and AID:
+            hippocampus: Hippocampus = HippocampusMgr().get_hippocampus(AID)
+            if hippocampus:
+                input_params['hippocampus'] = hippocampus
+                AI_memory_of_user: UserMemoryEntity = hippocampus.load_memory_of_user(UID)
+                input_params['AI_memory_of_user'] = AI_memory_of_user
         try:
             exec(node.script_router, input_params)
         except Exception as e:
@@ -308,7 +332,7 @@ class BluePrintManager:
                 return None
             return BluePrintInstance(
                 bp_id=bp_po.bp_id,
-                name=bp_po.name,
+                name=bp_po.bp_name,
                 description=bp_po.description,
                 portal_node=bp_po.portal_node,
                 action_nodes=bp_po.action_nodes,
@@ -330,3 +354,31 @@ class BluePrintManager:
                 if not hasattr(BluePrintManager, "_instance"):
                     BluePrintManager._instance = object.__new__(cls)
         return BluePrintManager._instance
+
+'''
+        input_params = {
+            'optional_child_node': nodes,
+            'trigger_event': event,
+            'tracer': execution_context.get_opencensus_tracer(),
+            'next_node': None,
+            'output_args_dict': {},
+            'shared_conditions': '',
+
+            'user_info': None,
+            'AI_info': None,
+            'hippocampus': None,
+            'AI_memory_of_user': None,
+        }'''
+def router_script_playground(
+        optional_child_node: List[str],
+        trigger_event: BaseEvent,
+        next_node: str,
+        output_args_dict: Dict[str, str],
+        shared_conditions: str,
+        user_info: Optional[UserBasicInformation],
+        AI_info: Optional[AIBasicInformation],
+        hippocampus: Optional[Hippocampus],
+        AI_memory_of_user: Optional[UserMemoryEntity],
+):
+    pass
+

@@ -21,7 +21,7 @@ class NodeConnection(BaseModel):
 
 class BluePrintPo(BaseModel):
     bp_id: str
-    name: str
+    bp_name: str
     description: str
     portal_node: str
 
@@ -29,7 +29,7 @@ class BluePrintPo(BaseModel):
     action_nodes: List[str]
     router_nodes: List[str]
 
-    connections: NodeConnection    # 有向有环图
+    connections: Dict[str, Dict[str, Dict[str, str]]]    # 有向有环图
 
     # 暂时不支持蓝图挂蓝图
     # blue_print_nodes: List[str]

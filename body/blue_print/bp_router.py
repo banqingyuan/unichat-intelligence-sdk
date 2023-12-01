@@ -30,7 +30,6 @@ class RouterNode(FunctionDescribe):
     router_type: str = RouterType_Anonymous
     expect_event: str = None
     script_router: Optional[str] = None
-    child_node_ids: Dict[str, List[str]]
 
 
 class BPRouterManager:
@@ -57,7 +56,6 @@ class BPRouterManager:
             name=router_po.router_name,
             description=router_po.description,
             router_type=router_po.router_type,
-            child_node_ids=router_po.child_node_ids
         )
         return router
 
