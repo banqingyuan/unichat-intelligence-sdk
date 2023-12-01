@@ -30,7 +30,7 @@ class BaseAction(FunctionDescribe):
     action_name: ClassVar[str]
 
     @abstractmethod
-    def execute(self, trigger_event: BaseEvent) -> bool:
+    def execute(self, trigger_event: BaseEvent) -> (bool, BaseEvent):
         """
         执行动作，bool表示是否可以执行后续动作, 如果存在阻断性错误则False
         """
