@@ -105,7 +105,7 @@ def _build_scene_trigger_po(trigger: Dict) -> SceneTriggerPo:
         trigger_id=trigger['trigger_id'],
         trigger_name=trigger['trigger_name'],
         event_name=trigger['event_name'],
-        condition_script=trigger['condition_script']
+        condition_script=trigger['condition_script'] if 'condition_script' in trigger else None
     )
 
 
