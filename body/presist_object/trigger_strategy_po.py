@@ -32,9 +32,8 @@ class AITriggerStrategyPo(BaseModel):
     possibility: str = '100'
     # 策略执行权重
     weight: Optional[str] = None
-
-    action_type: str
-    action_id: str
+    # 策略执行的动作 key: action_id, value: action config
+    actions: Dict[str, Dict[str, str]]
 
 
 def load_all_AI_strategy_po() -> List[AITriggerStrategyPo]:

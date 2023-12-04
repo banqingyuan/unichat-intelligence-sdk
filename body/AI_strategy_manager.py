@@ -237,6 +237,9 @@ class AIStrategyManager:
         if not strategy:
             logger.error(f"Strategy {strategy_id} not found")
             return None
+
+        strategy.get_action()
+
         if strategy.action:
             self.action_queue.put((strategy.action, trigger_event))
             return None

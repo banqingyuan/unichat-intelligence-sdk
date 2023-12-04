@@ -3,13 +3,13 @@ import random
 import threading
 import time
 from queue import Queue
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Union
 
 from common_py.utils.logger import wrapper_std_output, wrapper_azure_log_handler
 
-from body.blue_print.bp_instance import BluePrintManager
+from body.blue_print.bp_instance import BluePrintManager, BluePrintInstance
 from body.const import StrategyActionType_BluePrint, StrategyActionType_Action
-from body.entity.action_node import ActionNodeMgr
+from body.entity.action_node import ActionNodeMgr, ActionNode
 from body.presist_object.trigger_strategy_po import AITriggerStrategyPo, load_all_AI_strategy_po
 
 logger = wrapper_azure_log_handler(
@@ -50,22 +50,63 @@ class AIActionStrategy:
         self.channel_name = kwargs['channel_name']
         self.action_queue: Queue = kwargs['action_queue']
 
-        memory_mgr = kwargs['memory_mgr']
+        self.memory_mgr = kwargs['memory_mgr']
 
+        # strategy中绑定的action可以是多个，但是要求function describe必须一样。
+        # 因为strategy的func des 是根据action透传的，并提供给llm做function call的判断.
+        # 在多个action的情况下，会默认提供字典中首个action的function call describe
+        self.actions = kwargs['actions']
+        self.action_instance_dict: Dict[str, Union[BluePrintInstance, ActionNode]] = {}
+        self.func_describe = self._init_func_describe()
+
+        self._init_action_instance()
+
+        self.thread_lock = threading.Lock()
+        self._check_valid()
+
+    def get_action(self) -> Union[None, ActionNode, BluePrintInstance]:
+        try:
+            if not self.actions:
+                logger.error(f"invalid actions: {self.strategy_id}")
+                return
+            if len(self.actions) == 1:
+                action_id = list(self.actions.keys())[0]
+                return self.action_instance_dict.get(action_id, None)
+            else:
+                action_id_lst = list(self.actions.keys())
+                action_weight_lst = [int(action['weight']) for action in self.actions.values()]
+                execute_action_id = random.choices(action_id_lst, weights=action_weight_lst, k=1)[0]
+                return self.action_instance_dict.get(execute_action_id, None)
+        except Exception as e:
+            logger.exception(e)
+            return None
+
+    def _init_action_instance(self):
+        for action_id, action_config in self.actions.items():
+            action_instance = self._get_action_instance(action_id, **action_config)
+            if action_instance:
+                self.action_instance_dict[action_id] = action_instance
+
+    def _get_action_instance(self, action_id: str, **config) -> Union[None, ActionNode, BluePrintInstance]:
         # 满足条件后需要执行的动作
         # todo Action单独一张表 剧本：ActionScript 单独一张表，蓝图单独一张表，触发单独一张表
         # 这里是触发的结构，触发可以绑定ActionNode，也可以绑定蓝图，但是不可以直接绑定Action
-        if kwargs['action_type'] == StrategyActionType_BluePrint:
-            self.blue_print = BluePrintManager().get_instance(kwargs['action_id'],
-                                                              channel_name=self.channel_name,
-                                                              action_queue=self.action_queue,
-                                                              memory_mgr=memory_mgr)
-        elif kwargs['action_type'] == StrategyActionType_Action:
-            self.action = ActionNodeMgr().get_action_node(kwargs['action_id'])
+        if config['action_type'] == StrategyActionType_BluePrint:
+            instance = BluePrintManager().get_instance(action_id,
+                                                   channel_name=self.channel_name,
+                                                   action_queue=self.action_queue,
+                                                   memory_mgr=self.memory_mgr)
+        elif config['action_type'] == StrategyActionType_Action:
+            instance = ActionNodeMgr().get_action_node(action_id)
         else:
-            raise ValueError(f"invalid action_type: {kwargs['action_type']}")
-        self.thread_lock = threading.Lock()
-        self._check_valid()
+            logger.error(f"invalid action_type: {config['action_type']}")
+            return None
+        if not instance:
+            logger.error(f"action instance not found: {action_id}")
+            return None
+        if 'preset_params' in config:
+            instance.set_params(**config['preset_params'])
+        return instance
 
     def _check_valid(self):
         for key in self.must_provide:
@@ -97,11 +138,17 @@ class AIActionStrategy:
         finally:
             self.thread_lock.release()
 
-    def get_init_func_describe(self) -> Optional[Dict]:
-        if self.action:
-            return self.action.gen_function_call_describe()
-        if self.blue_print:
-            return self.blue_print.gen_function_call_describe()
+    def get_function_describe(self) -> Optional[Dict]:
+        return self.func_describe
+
+    def _init_func_describe(self) -> Optional[Dict]:
+        if len(self.actions) > 1:
+            for action_id, config in self.actions.items():
+                if 'use_for_function_describe' in config and config['use_for_function_describe']:
+                    instance = self.action_instance_dict.get(action_id, None)
+                    if instance:
+                        return instance.gen_function_call_describe()
+        return list(self.action_instance_dict.values())[0].gen_function_call_describe()
 
     def _check_effective(self):
         if time.time() < self.start_time or time.time() > self.end_time:
@@ -145,7 +192,6 @@ class AIStrategyMgr:
                 strategy_lst.append(strategy)
         return strategy_lst
 
-
     def get_strategy_by_id(self, strategy_id: str, **kwargs) -> Optional[AIActionStrategy]:
         strategy_po = self.strategy_po_map.get(strategy_id, None)
         if not strategy_po:
@@ -163,8 +209,7 @@ class AIStrategyMgr:
             weight=strategy_po.weight,
             channel_name=kwargs['channel_name'],
             action_queue=kwargs['action_queue'],
-            action_type=strategy_po.action_type,
-            action_id=strategy_po.action_id,
+            actions=strategy_po.actions,
             memory_mgr=kwargs['memory_mgr'],
         )
 
@@ -175,18 +220,16 @@ class AIStrategyMgr:
                     AIStrategyMgr._instance = object.__new__(cls)
         return AIStrategyMgr._instance
 
-
-if __name__ == '__main__':
-
-    def check_condition(condition_script: str = '', **factor_value):
-        if not condition_script:
-            return True
-        input_params = {
-            **factor_value,
-            'hit': False,
-        }
-        exec(condition_script, input_params)
-        return input_params['hit']
-
-    result = check_condition("if factor1  10: hit = True", factor1=15)
-    print(result)  # 输出: True
+# if __name__ == '__main__':
+#     actions = {
+#         "a": {
+#             "weight": "1"
+#         },
+#         "b": {
+#             "weight": "5"
+#         },
+#     }
+#     action_id_lst = list(actions.keys())
+#     action_weight_lst = [int(action['weight']) for action in actions.values()]
+#     execute_action_id = random.choices(action_id_lst, weights=action_weight_lst, k=1)[0]
+#     print (execute_action_id)
