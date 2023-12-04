@@ -143,6 +143,8 @@ class AIActionStrategy:
         return self.func_describe
 
     def _init_func_describe(self) -> Optional[Dict]:
+        if len(self.actions) == 0:
+            logger.error(f"invalid actions: {self.strategy_id} caused by empty actions")
         if len(self.actions) > 1:
             for action_id, config in self.actions.items():
                 if 'use_for_function_describe' in config and config['use_for_function_describe']:

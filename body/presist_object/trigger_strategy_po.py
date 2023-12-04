@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 
 from common_py.client.azure_mongo import MongoDBClient
 from common_py.utils.logger import wrapper_std_output, wrapper_azure_log_handler
@@ -33,7 +33,7 @@ class AITriggerStrategyPo(BaseModel):
     # 策略执行权重
     weight: Optional[str] = None
     # 策略执行的动作 key: action_id, value: action config
-    actions: Dict[str, Dict[str, str]]
+    actions: Dict[str, Dict[str, Any]]
 
 
 def load_all_AI_strategy_po() -> List[AITriggerStrategyPo]:
