@@ -64,12 +64,6 @@ class BluePrintInstance:
             self.name = kwargs['name']
             self.description = kwargs['description']
 
-            portal_node_instance = self._get_node_instance(kwargs['portal_node'])
-            if not portal_node_instance:
-                raise Exception("Portal node not found")
-            self.portal_node = portal_node_instance
-            self.current_node = portal_node_instance
-
             self.unactive_time_count = 0
 
             # key is node_id, value is node type
@@ -79,6 +73,13 @@ class BluePrintInstance:
             self.connection_mapping: Dict[str, Dict[str, Dict[str, str]]] = kwargs['connections']
 
             self._construct_blue_print(kwargs)
+
+            portal_node_instance = self._get_node_instance(kwargs['portal_node'])
+            if not portal_node_instance:
+                raise Exception("Portal node not found")
+            self.portal_node = portal_node_instance
+            self.current_node = portal_node_instance
+
             self.action_queue: Optional[queue.Queue] = None
             self.llm_client = ChatGPTClient(temperature=0)
             self.memory_mgr: MemoryManager = kwargs['memory_mgr']
