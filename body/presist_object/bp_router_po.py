@@ -3,7 +3,9 @@ from typing import List, Dict
 
 from common_py.client.azure_mongo import MongoDBClient
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+from body.entity.function_call import Parameter, new_empty_parameter
 
 logger = wrapper_azure_log_handler(
     wrapper_std_output(
@@ -19,6 +21,8 @@ class BPRouterPo(BaseModel):
     description: str
     router_type: str = None
     script_router: str = None
+
+    parameters: Parameter = Field(default_factory=new_empty_parameter)
 
 
 def load_all_bp_router_po() -> Dict[str, BPRouterPo]:

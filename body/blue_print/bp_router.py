@@ -56,6 +56,7 @@ class BPRouterManager:
             name=router_po.router_name,
             description=router_po.description,
             router_type=router_po.router_type,
+            parameters=router_po.parameters
         )
         return router
 

@@ -101,6 +101,13 @@ class FunctionDescribe(BaseModel):
             return None
         return dance_name_prop.value
 
+    def get_all_values(self) -> Dict[str, str]:
+        values = {}
+        for name, prop in self.parameters.properties.items():
+            if prop.value:
+                values[name] = prop.value
+        return values
+
     def set_output_params(self, **kwargs):
         for name, prop in self.output_params.properties.items():
             if name in kwargs:

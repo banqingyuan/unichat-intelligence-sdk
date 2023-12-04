@@ -176,7 +176,7 @@ class AIStrategyManager:
         func_describe_lst = []
         describe_strategy_idx = {}
         for strategy in potential_strategy_lst:
-            func_describe = strategy.get_init_func_describe()
+            func_describe = strategy.get_function_describe()
             describe_strategy_idx[func_describe['name']] = strategy.strategy_id
             if func_describe is not None:
                 func_describe_lst.append(func_describe)

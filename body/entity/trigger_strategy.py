@@ -82,7 +82,8 @@ class AIActionStrategy:
             return None
 
     def _init_action_instance(self):
-        for action_id, action_config in self.actions.items():
+        for _, action_config in self.actions.items():
+            action_id = action_config['action_id']
             action_instance = self._get_action_instance(action_id, **action_config)
             if action_instance:
                 self.action_instance_dict[action_id] = action_instance
@@ -93,9 +94,9 @@ class AIActionStrategy:
         # 这里是触发的结构，触发可以绑定ActionNode，也可以绑定蓝图，但是不可以直接绑定Action
         if config['action_type'] == StrategyActionType_BluePrint:
             instance = BluePrintManager().get_instance(action_id,
-                                                   channel_name=self.channel_name,
-                                                   action_queue=self.action_queue,
-                                                   memory_mgr=self.memory_mgr)
+                                                       channel_name=self.channel_name,
+                                                       action_queue=self.action_queue,
+                                                       memory_mgr=self.memory_mgr)
         elif config['action_type'] == StrategyActionType_Action:
             instance = ActionNodeMgr().get_action_node(action_id)
         else:

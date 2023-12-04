@@ -193,6 +193,7 @@ class BluePrintInstance:
             # 'tracer': execution_context.get_opencensus_tracer(),
             'next_node': None,
             'output_args_dict': {},
+            'input_args_dict': node.get_all_values(),
             'shared_conditions': '',
 
             'user_info': None,
@@ -374,6 +375,7 @@ def router_script_playground(
         trigger_event: BaseEvent,
         next_node: str,
         output_args_dict: Dict[str, str],
+        input_args_dict: Dict[str, str],
         shared_conditions: str,
         user_info: Optional[UserBasicInformation],
         AI_info: Optional[AIBasicInformation],
