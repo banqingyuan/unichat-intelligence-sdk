@@ -15,6 +15,7 @@ from common_py.utils.channel.util import get_AID_from_channel
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
 
 from body.blue_print.bp_instance import BluePrintInstance
+from body.entity.action_node import ActionNode
 from body.entity.trigger.base_tirgger import BaseTrigger
 from body.entity.trigger.lui_trigger import LUITrigger, eval_lui_trigger
 from body.entity.trigger.scene_trigger import SceneTrigger
@@ -238,10 +239,15 @@ class AIStrategyManager:
             logger.error(f"Strategy {strategy_id} not found")
             return None
 
-        strategy.get_action()
+        execute_action = strategy.get_action()
 
-        if strategy.action:
-            self.action_queue.put((strategy.action, trigger_event))
+        if not execute_action:
+            logger.error(f"Strategy {strategy_id} execute error cause by action not found")
             return None
-        if strategy.blue_print:
-            return strategy.blue_print
+
+        if isinstance(execute_action, BluePrintInstance):
+            return execute_action
+
+        if isinstance(execute_action, ActionNode):
+            self.action_queue.put((execute_action, trigger_event))
+            return None
