@@ -57,9 +57,10 @@ class AIActionStrategy:
         # 在多个action的情况下，会默认提供字典中首个action的function call describe
         self.actions = kwargs['actions']
         self.action_instance_dict: Dict[str, Union[BluePrintInstance, ActionNode]] = {}
-        self.func_describe = self._init_func_describe()
 
         self._init_action_instance()
+        self.func_describe = self._init_func_describe()
+
 
         self.thread_lock = threading.Lock()
         self._check_valid()
@@ -84,14 +85,15 @@ class AIActionStrategy:
     def _init_action_instance(self):
         for _, action_config in self.actions.items():
             action_id = action_config['action_id']
-            action_instance = self._get_action_instance(action_id, **action_config)
+            action_instance = self._get_action_instance(**action_config)
             if action_instance:
                 self.action_instance_dict[action_id] = action_instance
 
-    def _get_action_instance(self, action_id: str, **config) -> Union[None, ActionNode, BluePrintInstance]:
+    def _get_action_instance(self, **config) -> Union[None, ActionNode, BluePrintInstance]:
         # 满足条件后需要执行的动作
         # todo Action单独一张表 剧本：ActionScript 单独一张表，蓝图单独一张表，触发单独一张表
         # 这里是触发的结构，触发可以绑定ActionNode，也可以绑定蓝图，但是不可以直接绑定Action
+        action_id = config['action_id']
         if config['action_type'] == StrategyActionType_BluePrint:
             instance = BluePrintManager().get_instance(action_id,
                                                        channel_name=self.channel_name,
