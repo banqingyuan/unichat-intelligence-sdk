@@ -80,7 +80,7 @@ class BluePrintInstance:
             self.portal_node = portal_node_instance
             self.current_node = portal_node_instance
 
-            self.action_queue: Optional[queue.Queue] = None
+            self.action_queue: Optional[queue.Queue] = kwargs['action_queue']
             self.llm_client = ChatGPTClient(temperature=0)
             self.memory_mgr: MemoryManager = kwargs['memory_mgr']
             self.channel_name: str = ''
@@ -140,7 +140,7 @@ class BluePrintInstance:
                     self.unactive_time_count = 0
                 next_node = self._get_node_instance(next_node_id)
                 if params:
-                    next_node.set_params(**params.dict())
+                    next_node.set_params(**params)
                 if isinstance(next_node, RouterNode):
                     self.current_node = next_node
                     return self._execute(event)
@@ -241,7 +241,9 @@ class BluePrintInstance:
         if shared_conditions:
             known_conditions += shared_conditions + '\n'
         child_nodes = self._get_all_child_node_id(router.id)
-
+        if child_nodes is None or len(child_nodes) == 0:
+            logger.error(f"Router node {router.id} has no child node")
+            return '', None
         functions = []
         function_name_to_instance = {}
         for child_node_id in child_nodes:
@@ -288,6 +290,8 @@ class BluePrintInstance:
 
     def _get_all_child_node_id(self, node_id: str) -> List[str]:
         nodes = []
+        if node_id not in self.connection_mapping:
+            return nodes
         child_node_ids = self.connection_mapping[node_id].keys()
         for child_node_id in child_node_ids:
             nodes.append(child_node_id)
