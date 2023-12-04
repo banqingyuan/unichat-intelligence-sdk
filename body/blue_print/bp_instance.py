@@ -95,9 +95,9 @@ class BluePrintInstance:
         路由节点至少有一个出度
         """
         for node in bp_po['action_nodes']:
-            self.nodes_typ_idx[node['id']] = BPNodeType_Action
+            self.nodes_typ_idx[node] = BPNodeType_Action
         for node in bp_po['router_nodes']:
-            self.nodes_typ_idx[node['id']] = BPNodeType_Router
+            self.nodes_typ_idx[node] = BPNodeType_Router
 
     def start_bp(self, event: BaseEvent) -> (str, Optional[list]):
         return self._execute(event)
