@@ -70,10 +70,10 @@ class AIActionStrategy:
                 logger.error(f"invalid actions: {self.strategy_id}")
                 return
             if len(self.actions) == 1:
-                action_id = list(self.actions.keys())[0]
+                action_id = list(self.actions.values())[0]['action_id']
                 return self.action_instance_dict.get(action_id, None)
             else:
-                action_id_lst = list(self.actions.keys())
+                action_id_lst = [action['action_id'] for action in self.actions.values()]
                 action_weight_lst = [int(action['weight']) for action in self.actions.values()]
                 execute_action_id = random.choices(action_id_lst, weights=action_weight_lst, k=1)[0]
                 return self.action_instance_dict.get(execute_action_id, None)
@@ -143,10 +143,12 @@ class AIActionStrategy:
         return self.func_describe
 
     def _init_func_describe(self) -> Optional[Dict]:
-        if len(self.actions) == 0:
+        if len(self.action_instance_dict) == 0:
             logger.error(f"invalid actions: {self.strategy_id} caused by empty actions")
-        if len(self.actions) > 1:
-            for action_id, config in self.actions.items():
+            return None
+        if len(self.action_instance_dict) > 1:
+            for _, config in self.actions.items():
+                action_id = config['action_id']
                 if 'use_for_function_describe' in config and config['use_for_function_describe']:
                     instance = self.action_instance_dict.get(action_id, None)
                     if instance:
