@@ -28,10 +28,10 @@ logger = wrapper_azure_log_handler(
     )
 )
 
-BluePrintResult_Ignore = 'ignore'
-BluePrintResult_Executed = 'executed'
-BluePrintResult_Finished = 'finished'
-BluePrintResult_SelfKill = 'self_kill'
+BluePrintResult_Ignore = 'ignore'  # 本次不执行蓝图
+BluePrintResult_Executed = 'executed'  # 本次已成功执行蓝图
+BluePrintResult_Finished = 'finished'  # 蓝图已执行完毕
+BluePrintResult_SelfKill = 'self_kill'  # 蓝图出错，不再执行
 
 class FunctionCallException(Exception):
     pass
@@ -134,6 +134,8 @@ class BluePrintInstance:
             node = self.current_node
             if isinstance(node, RouterNode):
                 next_node_id, params = self._execute_router(node, event)
+                if next_node_id == '':
+                    return BluePrintResult_SelfKill
                 if next_node_id != node.id:
                     self.unactive_time_count = 0
                 next_node = self._get_node_instance(next_node_id)
@@ -172,7 +174,7 @@ class BluePrintInstance:
     def set_params(self, **kwargs):
         self.portal_node.set_params(**kwargs)
 
-    def _execute_router(self, node: RouterNode, trigger_event: BaseEvent) -> (str, Parameter):
+    def _execute_router(self, node: RouterNode, trigger_event: BaseEvent) -> (str, Dict[str, str]):
         # 首先判断是否使用脚本路由，如果不使用，默认使用llm路由
         # 如果是conversation event, 暂不支持使用脚本路由
         # todo 脚本路由实现
@@ -184,9 +186,11 @@ class BluePrintInstance:
             next_node, shared_conditions, params = self._execute_router_script_node(node, trigger_event)
             if next_node != '':
                 return next_node, params
+            if shared_conditions == '':
+                return '', None
         return self._execute_llm_router(node, trigger_event, shared_conditions)
 
-    def _execute_router_script_node(self, node: RouterNode, event: BaseEvent) -> (str, str, Parameter):
+    def _execute_router_script_node(self, node: RouterNode, event: BaseEvent) -> (str, str, Dict[str, str]):
         nodes = self._get_all_child_node_id(node.id)
         input_params = {
             'optional_child_node': nodes,
@@ -221,15 +225,15 @@ class BluePrintInstance:
             exec(node.script_router, input_params)
         except Exception as e:
             logger.exception(e)
-            return ''
+            return '', '', None
 
         if len(input_params['output_args_dict']) > 0:
-            output_params = Parameter(**input_params['output_args_dict'])
+            output_params = input_params['output_args_dict']
         else:
             output_params = None
         return input_params['next_node'], input_params['shared_conditions'], output_params
 
-    def _execute_llm_router(self, router: RouterNode, trigger_event: BaseEvent, shared_conditions: str = None) -> (str, Parameter):
+    def _execute_llm_router(self, router: RouterNode, trigger_event: BaseEvent, shared_conditions: str = None) -> (str, Dict[str, str]):
         mission_purpose = self.description
         known_conditions = ''
         for event in self.memory_mgr.get_event_list(BaseEvent, 6):
@@ -262,11 +266,8 @@ class BluePrintInstance:
                 func = function_name_to_instance.get(resp.function_name, None)
                 if not func:
                     raise FunctionCallException(f"Function name {resp.function_name} not found with response {resp.json()}")
-                if resp.arguments:
-                    func.set_params(**resp.arguments)
                 # params 的引用持有不会影响到func的释放
-                params = func.parameters
-                return func.id, params
+                return func.id, resp.arguments
             else:
                 raise FunctionCallException(f"Function name is empty with response {resp.json()}")
         else:
