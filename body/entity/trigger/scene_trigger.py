@@ -67,5 +67,4 @@ def ScriptPlayground(
         AI_info: AIBasicInformation,
         hippocampus: Hippocampus,
         AI_memory_of_user: UserMemoryEntity):
-
     pass

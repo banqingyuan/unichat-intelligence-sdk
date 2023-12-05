@@ -190,8 +190,6 @@ class AnimationMgr():
             info_lst.append(info)
         return info_lst
 
-
-
     def __new__(cls, *args, **kwargs):
         if not hasattr(AnimationMgr, "_instance"):
             with AnimationMgr._instance_lock:

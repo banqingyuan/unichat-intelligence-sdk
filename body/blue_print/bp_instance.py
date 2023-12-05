@@ -17,6 +17,7 @@ from body.blue_print.bp_router import RouterNode, BPRouterManager
 from body.const import BPNodeType_Action, BPNodeType_Router
 from body.entity.action_node import ActionNode, ActionNodeMgr
 from body.entity.function_call import FunctionDescribe, Parameter
+from body.funcs import Funcs
 from body.presist_object.bp_instance_po import load_all_bp_po, BluePrintPo
 from memory_sdk.hippocampus import Hippocampus, HippocampusMgr
 from memory_sdk.memory_entity import UserMemoryEntity
@@ -134,7 +135,8 @@ class BluePrintInstance:
             node = self.current_node
             if isinstance(node, RouterNode):
                 next_node_id, params = self._execute_router(node, event)
-                if next_node_id == '':
+                if next_node_id is None or next_node_id == '':
+                    logger.error(f"Next node id is empty: {node.id}")
                     return BluePrintResult_SelfKill
                 if next_node_id != node.id:
                     self.unactive_time_count = 0
@@ -205,6 +207,7 @@ class BluePrintInstance:
             'AI_info': None,
             'hippocampus': None,
             'AI_memory_of_user': None,
+            'funcs': Funcs(),
         }
 
         UID = event.get_UID()
@@ -231,6 +234,9 @@ class BluePrintInstance:
             output_params = input_params['output_args_dict']
         else:
             output_params = None
+        if input_params['next_node'] is None or input_params['next_node'] == '':
+            logger.error(f"Next node id is empty: {node.id}")
+            return '', input_params['shared_conditions'], output_params
         return input_params['next_node'], input_params['shared_conditions'], output_params
 
     def _execute_llm_router(self, router: RouterNode, trigger_event: BaseEvent, shared_conditions: str = None) -> (str, Dict[str, str]):
@@ -389,4 +395,3 @@ def router_script_playground(
         AI_memory_of_user: Optional[UserMemoryEntity],
 ):
     pass
-
