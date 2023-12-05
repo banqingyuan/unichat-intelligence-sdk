@@ -67,28 +67,41 @@ class AIStrategyManager:
         self.memory_mgr: MemoryManager = kwargs['memory_mgr']
 
     def load(self):
-        strategies_relation_info_lst = self.mongodb_client.find_from_collection("AI_strategy_relation", filter={
-            "AID": self.AID,
-        })
+        if self.ai_info and self.ai_info.tpl_name:
+            query_filter = {
+                "$or": [
+                    {
+                        "AID": self.AID,
+                    },
+                    {
+                        "tpl_name": {"$in": [self.ai_info.tpl_name]}
+                    }
+                ]
+            }
+        else:
+            query_filter = {
+                "AID": self.AID,
+            }
+        strategies_relation_info_lst = self.mongodb_client.find_from_collection("AI_strategy_relation", filter=query_filter)
         if len(strategies_relation_info_lst) == 0:
             logger.warning(f"AI {self.AID} don't have any strategy")
             return
-        strategies_relation_info = strategies_relation_info_lst[0]
         all_strategy_ids = {}
-        if 'strategy_packages' in strategies_relation_info:
-            strategy_package_ids = strategies_relation_info['strategy_packages']
-            strategy_package_info = self.mongodb_client.find_from_collection("AI_strategy_package", filter={
-                "strategy_package_id": {"$in": strategy_package_ids}
-            })
-            strategy_id_list = strategy_package_info['strategy_list']
-            for strategy_id in strategy_id_list:
-                # 放map里去重
-                all_strategy_ids[strategy_id] = True
-        if 'strategy_list' in strategies_relation_info:
-            strategy_id_list = strategies_relation_info['strategy_list']
-            for strategy_id in strategy_id_list:
-                # 放map里去重
-                all_strategy_ids[strategy_id] = True
+        for strategies_relation_info in strategies_relation_info_lst:
+            if 'strategy_packages' in strategies_relation_info:
+                strategy_package_ids = strategies_relation_info['strategy_packages']
+                strategy_package_info = self.mongodb_client.find_from_collection("AI_strategy_package", filter={
+                    "strategy_package_id": {"$in": strategy_package_ids}
+                })
+                strategy_id_list = strategy_package_info['strategy_list']
+                for strategy_id in strategy_id_list:
+                    # 放map里去重
+                    all_strategy_ids[strategy_id] = True
+            if 'strategy_list' in strategies_relation_info:
+                strategy_id_list = strategies_relation_info['strategy_list']
+                for strategy_id in strategy_id_list:
+                    # 放map里去重
+                    all_strategy_ids[strategy_id] = True
 
         all_strategy_id_lst = [strategy_id for strategy_id in all_strategy_ids.keys()]
         all_strategy_info = AIStrategyMgr().get_strategy_by_ids(
