@@ -5,17 +5,19 @@ from concurrent.futures import ThreadPoolExecutor
 from queue import Queue
 from typing import List, Dict, Optional
 
-from common_py.ai_toolkit.openAI import filter_brackets
+from common_py.ai_toolkit.openAI import filter_brackets, ChatGPTClient, Message, Model_gpt4, OpenAIChatResponse
 from common_py.client.azure_mongo import MongoDBClient
 from common_py.dto.ai_instance import AIBasicInformation
 from common_py.model.base import BaseEvent
 from common_py.model.chat import ConversationEvent
 from common_py.model.scene.scene import SceneEvent
+from common_py.model.system_hint import SystemHintEvent
 from common_py.utils.channel.util import get_AID_from_channel
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
 
 from body.blue_print.bp_instance import BluePrintInstance
 from body.entity.action_node import ActionNode
+from body.entity.function_call import FunctionDescribe, Parameter, Properties
 from body.entity.trigger.base_tirgger import BaseTrigger
 from body.entity.trigger.lui_trigger import LUITrigger, eval_lui_trigger
 from body.entity.trigger.scene_trigger import SceneTrigger
@@ -159,43 +161,6 @@ class AIStrategyManager:
                     del self.trigger_map[trigger_id]
                     # todo 上报给事件监听中心，取消trigger事件
 
-    def receive_conversation_event(self, trigger_events: List[ConversationEvent]) -> (List[Dict], Dict[str, str]):
-        # 此处应该根据候选trigger_ids, 找到对应的action入参，拼成function describe，然后调用LLM
-        # LUI触发的依据是意图的吻合程度，因此没有优先级之分
-        tasks = []
-        with ThreadPoolExecutor(max_workers=10) as executor:
-            for event in trigger_events:
-                message_input = filter_brackets(event.message)
-                message_splited = re.split(r'[;.,?!]', message_input)
-                for message in message_splited:
-                    tasks.append(executor.submit(eval_lui_trigger, self.LUI_trigger_lst, message))
-        active_trigger_id_map = {}
-        for task in tasks:
-            triggered_lui_map = task.result()
-            if triggered_lui_map:
-                active_trigger_id_map.update(triggered_lui_map)
-
-        potential_strategy_lst = []
-        for trigger_id in active_trigger_id_map.keys():
-            strategies = self.trigger_strategy_mapping.get(trigger_id, [])
-            if len(strategies) == 0:
-                logger.warning(f"trigger {trigger_id} don't have any strategy")
-                continue
-            if len(strategies) > 1:
-                logger.warning(f"trigger {trigger_id} should not have more than one strategy")
-            strategy = strategies[0]
-            potential_strategy_lst.append(strategy)
-        if len(potential_strategy_lst) == 0:
-            return [], {}
-        func_describe_lst = []
-        describe_strategy_idx = {}
-        for strategy in potential_strategy_lst:
-            func_describe = strategy.get_function_describe()
-            describe_strategy_idx[func_describe['name']] = strategy.strategy_id
-            if func_describe is not None:
-                func_describe_lst.append(func_describe)
-        return func_describe_lst, describe_strategy_idx
-
     def receive_scene_event(self, trigger_event: SceneEvent) -> Optional[BluePrintInstance]:
 
         eval_trigger = self.scene_event_name_to_trigger.get(trigger_event.event_name, [])
@@ -265,3 +230,92 @@ class AIStrategyManager:
         if isinstance(execute_action, ActionNode):
             self.action_queue.put((execute_action, trigger_event))
             return None
+
+    def receive_conversation_event(self,
+                                   trigger_events:
+                                   List[ConversationEvent],
+                                   current_event: BaseEvent) -> (bool, SystemHintEvent, Optional[BluePrintInstance]):
+        # 此处应该根据候选trigger_ids, 找到对应的action入参，拼成function describe，然后调用LLM
+        # LUI触发的依据是意图的吻合程度，因此没有优先级之分
+        tasks = []
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            for event in trigger_events:
+                message_input = filter_brackets(event.message)
+                message_splited = re.split(r'[;.,?!]', message_input)
+                for message in message_splited:
+                    tasks.append(executor.submit(eval_lui_trigger, self.LUI_trigger_lst, message))
+        active_trigger_id_map = {}
+        for task in tasks:
+            triggered_lui_map = task.result()
+            if triggered_lui_map:
+                active_trigger_id_map.update(triggered_lui_map)
+
+        potential_strategy_lst = []
+        for trigger_id in active_trigger_id_map.keys():
+            strategies = self.trigger_strategy_mapping.get(trigger_id, [])
+            if len(strategies) == 0:
+                logger.warning(f"trigger {trigger_id} don't have any strategy")
+                continue
+            if len(strategies) > 1:
+                logger.warning(f"trigger {trigger_id} should not have more than one strategy")
+            strategy = strategies[0]
+            potential_strategy_lst.append(strategy)
+        if len(potential_strategy_lst) == 0:
+            return True, None
+        describe_strategy_idx = {}
+        func_describe_lst = []
+        for strategy in potential_strategy_lst:
+            func_describe = strategy.get_function_describe()
+            describe_strategy_idx[func_describe['name']] = strategy.strategy_id
+            if func_describe is not None:
+                func_describe_lst.append(func_describe)
+
+        func_describe = FunctionDescribe(
+            name="InformationSupplement",
+            description="If there is a suitable function call but the required parameter information is incomplete, "
+                        "please call this function",
+            parameters=Parameter(
+                type='object',
+                properties={
+                    "information_to_be_added": Properties(
+                        type='string',
+                        description="Describe the information to be add"
+                    )
+                },
+                required=['information_to_be_added']
+            )
+        )
+        func_describe_lst.append(func_describe.gen_function_call_describe())
+
+        chat_client = ChatGPTClient()
+        message = Message(role='system', content='''You should choose the appropriate function call based on the 
+        contextual information provided; in principle, always use function call, and if there is no appropriate 
+        function, output "no appropriate function call".Don't make assumptions about what values to plug into functions.
+        Ask for clarification if a user request is ambiguous.''')
+
+        res = chat_client.generate(
+            messages=[message],
+            presence_penalty=0,
+            frequency_penalty=0,
+            functions=func_describe_lst,
+            UUID=current_event.UUID,
+            model_source=Model_gpt4,
+            timeout=13,  # 经过统计数据，p99是11s
+        )
+        if isinstance(res, OpenAIChatResponse):
+            function_name = res.function_name
+            if not function_name:
+                return True, None
+            args = res.arguments
+            if function_name == 'InformationSupplement':
+                if len(args) > 0 and 'information_to_be_added' in args:
+                    return True, Message(role='system', content=f'More information required. {args}')
+                return True, None
+            strategy_id = describe_strategy_idx.get(function_name, None)
+            if not strategy_id:
+                logger.error(f"The lui called can not match strategy_id, function name: {function_name}")
+            blue_print = self.activate_strategy(strategy_id, current_event, **args)
+            if blue_print is not None:
+                return False, None, blue_print
+            return False, None, None
+        return True, None, None
