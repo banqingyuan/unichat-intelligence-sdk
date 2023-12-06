@@ -25,10 +25,9 @@ class ActionAtom(FunctionDescribe):
     # 同一种动作，在不同的编排中的id都是不同的，但只需保证全剧本中唯一即可。
     atom_id: str
 
-    # required in FunctionDescribe
-    # name: str 需要在动作编排中唯一或在全蓝图中唯一
-    # description: str
-    # parameters: Parameter
+    # 配置化编辑时需要补充FunctionDescribe中的方法介绍(description)
+    # 和节点名称(name)。
+    # 参数信息由配置的action_atom入口节点自动补充
 
     action_engine: BaseAction
 
@@ -44,8 +43,13 @@ class ActionAtom(FunctionDescribe):
         logger.info(f"set output args for {self.atom_id}: {output_args}")
         self.set_output_params(**output_args)
 
-    def gen_function_call_describe(self):
-        return self.action_engine.gen_function_call_describe()
+    def get_args_optional_info(self, **kwargs) -> Dict[str, str]:
+        args_optional_info = self.action_engine.get_args_optional_info(**kwargs)
+        self.args_optional_info = args_optional_info  # ActionAtom上的 args_optional_info字段实际上无需读取
+        return args_optional_info
+
+    def gen_function_call_describe(self, **kwargs):
+        return super().gen_function_call_describe(**kwargs)
 
     def set_params(self, **kwargs):
         self.action_engine.set_params(**kwargs)
@@ -55,7 +59,9 @@ class ActionProgram(FunctionDescribe):
     """
     原子动作的组合编排，由此构成一个自然连贯的动作组合
     可以被蓝图动作引用，也可以由LUI或触发器直接引用。
-    program 使用的 FunctionDescribe中的入参需求需要自己编辑
+
+    配置化编辑时需要补充FunctionDescribe中的方法介绍(description)和节点名称(name)。
+    参数信息由配置的action_atom入口节点自动补充
     """
     action_program_id: str
 
@@ -119,6 +125,17 @@ class ActionProgram(FunctionDescribe):
                 args_to_fill[target_args_name] = args.get_prop_value(source_args_name)
         self.action_nodes[child_id].set_params(**args_to_fill)
         logger.info(f"preset args for {child_id} from {parent_id}: {args_to_fill}")
+
+    def get_args_optional_info(self, **kwargs) -> Dict[str, str]:
+        all_args_info = {}
+        for node in self.portal_nodes:
+            args_info = self.action_nodes[node].get_args_optional_info(**kwargs)
+            all_args_info.update(args_info)
+        self.args_optional_info = all_args_info  # 该赋值实际上无需读取
+        return all_args_info
+
+    def gen_function_call_describe(self, **kwargs):
+        return super().gen_function_call_describe(**kwargs)
 
     def execute(self):
         ready_actions = self.ready_to_execute()

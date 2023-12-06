@@ -10,6 +10,7 @@ logger = wrapper_azure_log_handler(
     )
 )
 
+
 class Properties(BaseModel):
     type: str
     enum: List[str] = Field(default=None)
@@ -65,20 +66,32 @@ def new_empty_parameter():
 
 class FunctionDescribe(BaseModel):
     name: str
-    description: str
+    args_optional_info: Dict[str, str] = Field(default={})  # key: args_name value: description 提供了参数的可选值，有可能是动态的
+    description: str = Field(default=None) # 函数的描述
 
     parameters: Parameter = Field(default_factory=new_empty_parameter)
     output_params: Parameter = Field(default_factory=new_empty_parameter)
 
-    def gen_function_call_describe(self):
+    def get_args_optional_info(self, **kwargs) -> Dict[str, str]:
+        # 兜底实现，子类可以通过重写方法实现运行时动态加载参数信息。
+        return self.args_optional_info
+
+    def gen_function_call_describe(self, **kwargs):
         # 所有value设置过的都是预置参数，不需要填充
         params = self.parameters.dict(exclude_none=True)
         for name, prop in self.parameters.properties.items():
             if prop.value is not None:
                 del params['properties'][name]
+
+        function_description = self.description
+        args_optional_info = self.get_args_optional_info(**kwargs)
+        if len(args_optional_info) > 0:
+            function_description += "\nThe following options are available for some of the parameters in the current environment: \n"
+            for name, desc in self.args_optional_info.items():
+                function_description += f"{name}: {desc}\n"
         describe = {
             "name": self.name,
-            "description": self.description,
+            "description": function_description,
             "parameters": params
         }
         return describe

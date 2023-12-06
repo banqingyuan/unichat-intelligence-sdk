@@ -59,8 +59,6 @@ class AIActionStrategy:
         self.action_instance_dict: Dict[str, Union[BluePrintInstance, ActionNode]] = {}
 
         self._init_action_instance()
-        self.func_describe = self._init_func_describe()
-
 
         self.thread_lock = threading.Lock()
         self._check_valid()
@@ -141,10 +139,10 @@ class AIActionStrategy:
         finally:
             self.thread_lock.release()
 
-    def get_function_describe(self) -> Optional[Dict]:
-        return self.func_describe
+    def get_function_describe(self, **kwargs) -> Optional[Dict]:
+        return self._init_func_describe(**kwargs)
 
-    def _init_func_describe(self) -> Optional[Dict]:
+    def _init_func_describe(self, **kwargs) -> Optional[Dict]:
         if len(self.action_instance_dict) == 0:
             logger.error(f"invalid actions: {self.strategy_id} caused by empty actions")
             return None
@@ -154,8 +152,8 @@ class AIActionStrategy:
                 if 'use_for_function_describe' in config and config['use_for_function_describe']:
                     instance = self.action_instance_dict.get(action_id, None)
                     if instance:
-                        return instance.gen_function_call_describe()
-        return list(self.action_instance_dict.values())[0].gen_function_call_describe()
+                        return instance.gen_function_call_describe(**kwargs)
+        return list(self.action_instance_dict.values())[0].gen_function_call_describe(**kwargs)
 
     def _check_effective(self):
         if time.time() < self.start_time or time.time() > self.end_time:

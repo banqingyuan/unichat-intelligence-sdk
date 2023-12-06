@@ -32,6 +32,7 @@ class RouterNode(FunctionDescribe):
     script_router: Optional[str] = None
 
 
+
 class BPRouterManager:
     _instance_lock = threading.Lock()
 

@@ -2,16 +2,12 @@ import logging
 import queue
 import threading
 from typing import Dict, Optional, List, Union
-
 from common_py.ai_toolkit.openAI import ChatGPTClient, Message, OpenAIChatResponse
-from common_py.client.azure_mongo import MongoDBClient
 from common_py.dto.ai_instance import AIBasicInformation, InstanceMgr
 from common_py.dto.user import UserBasicInformation, UserInfoMgr
 from common_py.model.base import BaseEvent
 from common_py.model.chat import ConversationEvent
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
-from opencensus.trace import execution_context
-
 from body import const
 from body.blue_print.bp_router import RouterNode, BPRouterManager
 from body.const import BPNodeType_Action, BPNodeType_Router
@@ -167,11 +163,16 @@ class BluePrintInstance:
             logger.exception(e)
             return BluePrintResult_SelfKill
 
-    def gen_function_call_describe(self) -> Optional[Dict]:
+    def gen_function_call_describe(self, **kwargs) -> Optional[Dict]:
+        # 入口是Router的话如何提供function call describe需要重新设计
         node = self.current_node
         if isinstance(node, ActionNode):
-            return node.gen_function_call_describe()
-        return None
+            return node.gen_function_call_describe(**kwargs)
+        fd = FunctionDescribe(
+            name=self.name,
+            description=self.description,
+        )
+        return fd.gen_function_call_describe(**kwargs)
 
     def set_params(self, **kwargs):
         self.portal_node.set_params(**kwargs)

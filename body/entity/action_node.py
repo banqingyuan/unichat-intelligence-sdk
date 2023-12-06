@@ -60,11 +60,11 @@ class ActionNode(FunctionDescribe):
         elif self.action_type == ActionType_Program:
             return self.action_program.execute()
 
-    def gen_function_call_describe(self):
+    def gen_function_call_describe(self, **kwargs):
         if self.action_type == ActionType_Atom:
-            return self.action_Atom.gen_function_call_describe()
+            return self.action_Atom.gen_function_call_describe(**kwargs)
         elif self.action_type == ActionType_Program:
-            return self.action_program.gen_function_call_describe()
+            return self.action_program.gen_function_call_describe(**kwargs)
 
 
 class ActionNodeMgr:
