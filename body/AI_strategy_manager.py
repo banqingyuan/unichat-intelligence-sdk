@@ -140,7 +140,7 @@ class AIStrategyManager:
                     self.scene_event_name_to_trigger[trigger.event_name] = []
                 self.scene_event_name_to_trigger[trigger.event_name].append(trigger)
 
-        self.LUI_trigger_lst = list(lui_trigger_map.keys())
+        self.LUI_trigger_lst.extend(list(lui_trigger_map.keys()))
 
     def unbundle_trigger(self, effective_strategy):
         for trigger_id in effective_strategy.trigger_lst:
@@ -207,8 +207,6 @@ class AIStrategyManager:
         blue_print_instance = None
         for s in winner_strategy_lst:
             blue_print_instance = self.activate_strategy(s.strategy_id, trigger_event)
-            if not s.execute_count():
-                self.unbundle_trigger(s)
         return blue_print_instance
 
     def activate_strategy(self, strategy_id: str, trigger_event: BaseEvent, **params) -> Optional[BluePrintInstance]:
@@ -216,7 +214,8 @@ class AIStrategyManager:
         if not strategy:
             logger.error(f"Strategy {strategy_id} not found")
             return None
-
+        if not strategy.execute_count():
+            self.unbundle_trigger(strategy)
         execute_action = strategy.get_action()
         execute_action.set_params(**params)
 
@@ -317,6 +316,7 @@ class AIStrategyManager:
             if not strategy_id:
                 logger.error(f"The lui called can not match strategy_id, function name: {function_name}")
             blue_print = self.activate_strategy(strategy_id, current_event, **args)
+            # todo 判断策略是否过期和策略执行计数+unbind
             if blue_print is not None:
                 return False, None, blue_print
             return False, None, None
