@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import List
 
 from common_py.client.azure_mongo import MongoDBClient
-from common_py.client.pg import batch_insert_vector, PgEngine, query_vector_info
+from common_py.client.pg import batch_insert_vector, PgEngine, query_vector_info, delete_records_by_filter
 from common_py.dto.ai_action_vector import ActionVectorInfo, ActionVector, create_new_action_vector_info
 
 all_action_json_str = """
@@ -61,8 +61,6 @@ all_action_json_str = """
     {"id": 9149, "description": "A romantic action of leaning forward to kiss, with both arms supporting the other person's shoulders.", "gender": "Female"},
     {"id": 9150, "description": "An action of sending a flying kiss with both hands. Showing love.", "gender": "All"},
     {"id": 9151, "description": "An action of sending a flying kiss with one hand. Showing love.", "gender": "All"},
-    {"id": 9152, "description": "Stands in place, laughing and looking downwards. Signaling joy and amusement.", "gender": "All"},
-    {"id": 9153, "description": "Stands in place, laughing and looking upwards. Signaling happiness and lightheartedness.", "gender": "All"},
     {"id": 9154, "description": "An action of looking around.", "gender": "Female"},
     {"id": 9155, "description": "An action of looking around.", "gender": "Male"},
     {"id": 9156, "description": "A slow and thoughtful looks towards the lower left corner. A sign of contemplation or introspection.", "gender": "All"},
@@ -74,22 +72,6 @@ all_action_json_str = """
     {"id": 9162, "description": "Nods twice. Strong affirmation or agreement, emphasize a point or statement.", "gender": "All"},
     {"id": 9163, "description": "An action of nodding in agreement with a large wave of the hand.", "gender": "Male"},
     {"id": 9164, "description": "An action of spreading both hands wide to indicate indifference.", "gender": "Male"},
-    {"id": 9165, "description": "Right hand touching the back of the neck, a pose signaling slight embarrassment or admitting a mistake. This can be used as a photo pose.", "gender": "All"},
-    {"id": 9166, "description": "Right hand on chest, signaling bravery. This can be used as a photo pose.", "gender": "All"},
-    {"id": 9167, "description": "Hands resting on the back. This can be used as a photo pose.", "gender": "All"},
-    {"id": 9168, "description": "Hands resting on the front. This can be used as a photo pose.", "gender": "All"},
-    {"id": 9169, "description": "A cute and playful posture that's ideal for a photo shoot.", "gender": "All"},
-    {"id": 9170, "description": "A confident stance with the left hand on the waist, suitable for a stylish photo shoot.", "gender": "All"},
-    {"id": 9171, "description": "A stance with hands open in front, good for a straightforward photo shoot.", "gender": "All"},
-    {"id": 9172, "description": "A lively stance with the right fist raised, perfect for an energetic photo session.", "gender": "All"},
-    {"id": 9173, "description": "A lively and playful pose with the right hand making a scissors sign, perfect for a fun and energetic photo shoot.", "gender": "All"},
-    {"id": 9174, "description": "A joyful stance that captures a moment of laughter, great for a cheerful photo shoot.", "gender": "All"},
-    {"id": 9175, "description": "A humble or remorseful stance, like after making a mistake, suitable for an expressive photo session.", "gender": "All"},
-    {"id": 9176, "description": "A flirtatious stance with the right hand pointing, perfect for a provocative photo shoot.", "gender": "All"},
-    {"id": 9177, "description": "A seductive stance with the right hand resting behind the body, suitable for a sultry photo shoot.", "gender": "All"},
-    {"id": 9178, "description": "An enticing stance with a forward lean, perfect for a seductive photo shoot.", "gender": "All"},
-    {"id": 9179, "description": "A stance that captures an expression of surprise with hands open in front, great for a dynamic photo shoot.", "gender": "All"},
-    {"id": 9180, "description": "A contemplative stance that conveys deep thought, suitable for a thoughtful or intellectual photo shoot.", "gender": "All"},
     {"id": 9181, "description": "An action displaying frustration by pointing a finger.", "gender": "Female"},
     {"id": 9182, "description": "A slow, cute action of pointing at someone with a finger.", "gender": "Female"},
     {"id": 9183, "description": "An action of praying with hands together.", "gender": "All"},
@@ -155,6 +137,7 @@ def load_animation_from_mongo_to_vdb():
     for task in tasks:
         animation = task.result()
         animation_lst.append(animation)
+    delete_records_by_filter(ActionVector, {})
     batch_insert_vector(animation_lst, ActionVector)
 
     return res
@@ -181,8 +164,8 @@ class AnimationMgr():
                           meta_filter={
                               'gender': {'$in': gender_lst}
                           },
-                          top_k=10,
-                          threshold=0.6,
+                          top_k=4,
+                          threshold=0.75,
                           )
         info_lst = []
         for res in res_lst:
@@ -200,12 +183,13 @@ class AnimationMgr():
 
 if __name__ == '__main__':
     pg_config = {
-        "host": "c.postgre-east.postgres.database.azure.com",
-        # "host": "c-unichat-postgres-prod.q2t5np375m754a.postgres.cosmos.azure.com",
+        # "host": "c.postgre-east.postgres.database.azure.com",
+        "host": "c-unichat-postgres-prod.q2t5np375m754a.postgres.cosmos.azure.com",
         "user": "citus",
         "db_name": "citus"
     }
     PgEngine(**pg_config)
-    # mongoClient = MongoDBClient(DB_NAME="unichat-backend")
+    mongoClient = MongoDBClient(DB_NAME="unichat-backend")
+    # load_animation_to_mongo()
     # load_animation_from_mongo_to_vdb()
-    AnimationMgr().load_animation_from_vdb("Debug面板反了，要背对着才能点，其他人的测试包也有这个问题吗？", 'female')
+    # print(AnimationMgr().load_animation_from_vdb("这个键盘是宁芝的", 'female'))
