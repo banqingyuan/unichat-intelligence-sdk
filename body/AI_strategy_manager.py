@@ -287,10 +287,11 @@ class AIStrategyManager:
 
         chat_client = ChatGPTClient()
         messages = []
-        message = Message(role='system', content='''You should choose the appropriate function call based on the 
+        message = Message(role='system',
+                          content='''You should choose the appropriate function call based on the 
         contextual information provided; in principle, always use function call, and if there is no appropriate 
         function, output "no appropriate function call".Don't make assumptions about what values to plug into functions.
-        Ask for clarification if a user request is ambiguous.''')
+        If the required parameters are not complete, InformationSupplement should be called''')
         messages.append(message)
         messages.extend([m.get_message_from_event() for m in trigger_events])
 
