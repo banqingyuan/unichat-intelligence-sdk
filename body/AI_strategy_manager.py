@@ -232,8 +232,7 @@ class AIStrategyManager:
             return None
 
     def receive_conversation_event(self,
-                                   trigger_events:
-                                   List[ConversationEvent],
+                                   trigger_events: List[ConversationEvent],
                                    current_event: BaseEvent) -> (bool, SystemHintEvent, Optional[BluePrintInstance]):
         # 此处应该根据候选trigger_ids, 找到对应的action入参，拼成function describe，然后调用LLM
         # LUI触发的依据是意图的吻合程度，因此没有优先级之分
@@ -261,7 +260,7 @@ class AIStrategyManager:
             strategy = strategies[0]
             potential_strategy_lst.append(strategy)
         if len(potential_strategy_lst) == 0:
-            return True, None
+            return True, None, None
         describe_strategy_idx = {}
         func_describe_lst = []
         for strategy in potential_strategy_lst:
@@ -288,10 +287,13 @@ class AIStrategyManager:
         func_describe_lst.append(func_describe.gen_function_call_describe())
 
         chat_client = ChatGPTClient()
+        messages = []
         message = Message(role='system', content='''You should choose the appropriate function call based on the 
         contextual information provided; in principle, always use function call, and if there is no appropriate 
         function, output "no appropriate function call".Don't make assumptions about what values to plug into functions.
         Ask for clarification if a user request is ambiguous.''')
+        messages.append(message)
+        messages.extend([m.get_message_from_event() for m in trigger_events])
 
         res = chat_client.generate(
             messages=[message],
@@ -305,12 +307,12 @@ class AIStrategyManager:
         if isinstance(res, OpenAIChatResponse):
             function_name = res.function_name
             if not function_name:
-                return True, None
+                return True, None, None
             args = res.arguments
             if function_name == 'InformationSupplement':
                 if len(args) > 0 and 'information_to_be_added' in args:
                     return True, Message(role='system', content=f'More information required. {args}')
-                return True, None
+                return True, None, None
             strategy_id = describe_strategy_idx.get(function_name, None)
             if not strategy_id:
                 logger.error(f"The lui called can not match strategy_id, function name: {function_name}")
