@@ -183,8 +183,8 @@ class AnimationMgr():
 
 if __name__ == '__main__':
     pg_config = {
-        # "host": "c.postgre-east.postgres.database.azure.com",
-        "host": "c-unichat-postgres-prod.q2t5np375m754a.postgres.cosmos.azure.com",
+        "host": "c.postgre-east.postgres.database.azure.com",
+        # "host": "c-unichat-postgres-prod.q2t5np375m754a.postgres.cosmos.azure.com",
         "user": "citus",
         "db_name": "citus"
     }
@@ -192,4 +192,4 @@ if __name__ == '__main__':
     mongoClient = MongoDBClient(DB_NAME="unichat-backend")
     # load_animation_to_mongo()
     # load_animation_from_mongo_to_vdb()
-    # print(AnimationMgr().load_animation_from_vdb("这个键盘是宁芝的", 'female'))
+    print(AnimationMgr().load_animation_from_vdb("With a big smile, I'm clapping my hands in response to your action. Isn't it lovely how even simple actions can bring us closer?", 'female'))
