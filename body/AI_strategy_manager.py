@@ -296,7 +296,7 @@ class AIStrategyManager:
         messages.extend([m.get_message_from_event() for m in trigger_events])
 
         res = chat_client.generate(
-            messages=[message],
+            messages=messages,
             presence_penalty=0,
             frequency_penalty=0,
             functions=func_describe_lst,

@@ -49,7 +49,7 @@ class ActionAtom(FunctionDescribe):
         return args_optional_info
 
     def gen_function_call_describe(self, **kwargs):
-        return super().gen_function_call_describe(**kwargs)
+        return self.action_engine.gen_function_call_describe(**kwargs)
 
     def set_params(self, **kwargs):
         self.action_engine.set_params(**kwargs)
