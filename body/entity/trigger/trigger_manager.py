@@ -2,7 +2,7 @@ import logging
 import threading
 import time
 from typing import Dict, Optional, List
-
+import hashlib
 from common_py.client.azure_mongo import MongoDBClient
 from common_py.client.chroma import ChromaDBManager
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
@@ -11,7 +11,6 @@ from body.entity.trigger.base_tirgger import BaseTrigger
 from body.entity.trigger.lui_trigger import LUITrigger
 from body.entity.trigger.scene_trigger import SceneTrigger
 from body.presist_object.trigger_po import load_all_trigger_po, LUITriggerPo, SceneTriggerPo, save_LUITriggerPo_to_vdb
-from util import check_sum_md5
 
 logger = wrapper_azure_log_handler(
     wrapper_std_output(
@@ -120,6 +119,12 @@ class TriggerMgr:
                 if not hasattr(TriggerMgr, "_instance"):
                     TriggerMgr._instance = object.__new__(cls)
         return TriggerMgr._instance
+
+
+def check_sum_md5(input_str: str) -> str:
+    md5 = hashlib.md5()
+    md5.update(input_str.encode('utf-8'))
+    return md5.hexdigest()
 
 
 def _build_scene_trigger(trigger: Dict) -> SceneTrigger:
