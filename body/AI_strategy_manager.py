@@ -7,19 +7,21 @@ from typing import List, Dict, Optional
 
 from common_py.ai_toolkit.openAI import filter_brackets, ChatGPTClient, Message, Model_gpt4, OpenAIChatResponse
 from common_py.client.azure_mongo import MongoDBClient
+from common_py.client.chroma import ChromaCollection, ChromaDBManager, VectorRecordItem
 from common_py.dto.ai_instance import AIBasicInformation
+from common_py.dto.lui_trigger import LUITriggerInfo
 from common_py.model.base import BaseEvent
 from common_py.model.chat import ConversationEvent
 from common_py.model.scene.scene import SceneEvent
 from common_py.model.system_hint import SystemHintEvent
 from common_py.utils.channel.util import get_AID_from_channel
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
-
 from body.blue_print.bp_instance import BluePrintInstance
+from body.const import CollectionName_LUI
 from body.entity.action_node import ActionNode
 from body.entity.function_call import FunctionDescribe, Parameter, Properties
 from body.entity.trigger.base_tirgger import BaseTrigger
-from body.entity.trigger.lui_trigger import LUITrigger, eval_lui_trigger
+from body.entity.trigger.lui_trigger import LUITrigger
 from body.entity.trigger.scene_trigger import SceneTrigger
 from body.entity.trigger.trigger_manager import TriggerMgr
 from body.entity.trigger_strategy import AIActionStrategy, AIStrategyMgr
@@ -67,6 +69,8 @@ class AIStrategyManager:
         self.LUI_trigger_lst: List[str] = []
 
         self.memory_mgr: MemoryManager = kwargs['memory_mgr']
+
+        self.lui_collection: ChromaCollection = ChromaDBManager().get_collection(CollectionName_LUI)
 
     def load(self):
         if self.ai_info and self.ai_info.tpl_name:
@@ -241,7 +245,7 @@ class AIStrategyManager:
                 message_input = filter_brackets(event.message)
                 message_splited = re.split(r'[;.,?!]', message_input)
                 for message in message_splited:
-                    tasks.append(executor.submit(eval_lui_trigger, self.LUI_trigger_lst, message))
+                    tasks.append(executor.submit(self.eval_lui_trigger, self.LUI_trigger_lst, message))
         active_trigger_id_map = {}
         for task in tasks:
             triggered_lui_map = task.result()
@@ -322,3 +326,26 @@ class AIStrategyManager:
                 return False, None, blue_print
             return False, None, None
         return True, None, None
+
+    def eval_lui_trigger(self, potential_triggers: List[str], target_text: str) -> Dict:
+        try:
+            vdb_res: List[VectorRecordItem] = self.lui_collection.query(
+                input_data=target_text,
+                top_k=3,
+                meta_filter={'trigger_id': {'$in': potential_triggers}},
+                threshold=0.70
+            )
+            results = [LUITriggerInfo(
+                id=item.id,
+                trigger_name=item.meta['trigger_name'],
+                trigger_id=item.meta['trigger_id'],
+                corpus_text=str(item.documents)
+            ) for item in vdb_res]
+            logger.info(f"eval_trigger: {[result.json() for result in results]}")
+            trigger_id_map = {}
+            for result in results:
+                trigger_id_map[result.trigger_id] = True
+            return trigger_id_map
+        except Exception as e:
+            logger.exception(e)
+            return {}

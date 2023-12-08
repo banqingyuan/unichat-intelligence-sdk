@@ -14,6 +14,8 @@ BPNodeType_Action = 'action'
 TriggerType_LUI = 'LUI_trigger'
 TriggerType_Scene = 'scene_trigger'
 
+CollectionName_LUI = 'LUI_trigger_database'
+
 router_prompt = """
 ##### Mission Purpose
 {mission_purpose}
