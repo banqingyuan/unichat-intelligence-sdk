@@ -72,7 +72,6 @@ class AIStrategyManager:
 
         self.lui_collection: ChromaCollection = ChromaDBManager().get_collection(CollectionName_LUI)
         self.func_call_bad_case_collection: ChromaCollection = ChromaDBManager().get_collection("func_call_bad_case")
-        self._init_func_call_bad_case()
 
 
     def load(self):
