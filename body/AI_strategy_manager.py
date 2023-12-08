@@ -71,7 +71,7 @@ class AIStrategyManager:
         self.memory_mgr: MemoryManager = kwargs['memory_mgr']
 
         self.lui_collection: ChromaCollection = ChromaDBManager().get_collection(CollectionName_LUI)
-        self.func_call_bad_case_collection: ChromaCollection = ChromaDBManager().get_collection("func_call_bad_case")
+        # self.func_call_bad_case_collection: ChromaCollection = ChromaDBManager().get_collection("func_call_bad_case")
 
 
     def load(self):
@@ -332,6 +332,8 @@ class AIStrategyManager:
 
     def eval_lui_trigger(self, potential_triggers: List[str], target_text: str) -> Dict:
         try:
+            if target_text is None or len(target_text.strip()) == 0:
+                return {}
             vdb_res: List[VectorRecordItem] = self.lui_collection.query(
                 input_data=target_text,
                 top_k=3,
