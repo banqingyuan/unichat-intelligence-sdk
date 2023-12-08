@@ -11,7 +11,7 @@ from body.entity.trigger.base_tirgger import BaseTrigger
 from body.entity.trigger.lui_trigger import LUITrigger
 from body.entity.trigger.scene_trigger import SceneTrigger
 from body.presist_object.trigger_po import load_all_trigger_po, LUITriggerPo, SceneTriggerPo, save_LUITriggerPo_to_vdb
-from utils import check_sum_md5
+from util import check_sum_md5
 
 logger = wrapper_azure_log_handler(
     wrapper_std_output(

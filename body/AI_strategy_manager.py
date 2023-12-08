@@ -71,6 +71,9 @@ class AIStrategyManager:
         self.memory_mgr: MemoryManager = kwargs['memory_mgr']
 
         self.lui_collection: ChromaCollection = ChromaDBManager().get_collection(CollectionName_LUI)
+        self.func_call_bad_case_collection: ChromaCollection = ChromaDBManager().get_collection("func_call_bad_case")
+        self._init_func_call_bad_case()
+
 
     def load(self):
         if self.ai_info and self.ai_info.tpl_name:
@@ -309,6 +312,7 @@ class AIStrategyManager:
             timeout=13,  # 经过统计数据，p99是11s
         )
         if isinstance(res, OpenAIChatResponse):
+            logger.info(f"Function call llm resp: {res.json()}")
             function_name = res.function_name
             if not function_name:
                 return True, None, None
