@@ -297,8 +297,8 @@ class AIStrategyManager:
         contextual information provided; in principle, always use function call, and if there is no appropriate 
         function, output "no appropriate function call".Don't make assumptions about what values to plug into functions.
         If the required parameters are not complete, InformationSupplement should be called''')
-        messages.append(message)
         messages.extend([m.get_message_from_event() for m in trigger_events])
+        messages.append(message)
 
         res = chat_client.generate(
             messages=messages,

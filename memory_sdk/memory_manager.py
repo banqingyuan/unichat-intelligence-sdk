@@ -56,11 +56,12 @@ class MemoryManager:
             return [e for e in self.local_event_buffer if isinstance(e, target_type)]
         else:
             target_event_lst = []
-            for e in self.local_event_buffer:
+            for e in self.local_event_buffer[::-1]:
                 if isinstance(e, target_type):
                     target_event_lst.append(e)
                     if len(target_event_lst) >= count:
                         break
+            target_event_lst.reverse()
             return target_event_lst
 
     def zip_context_memory(self):
