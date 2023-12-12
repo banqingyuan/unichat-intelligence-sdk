@@ -33,6 +33,8 @@ class MemoryManager:
         # self.current_message_key: str = "input_message"
 
     def add_event(self, event: BaseEvent):
+        if not isinstance(event, BaseEvent):
+            raise Exception(f"event {event} is not a BaseEvent")
         self.local_event_buffer.append(event)
         # if isinstance(event, ConversationEvent):
         #     if event.role == 'user':

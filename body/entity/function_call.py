@@ -87,7 +87,7 @@ class FunctionDescribe(BaseModel):
         args_optional_info = self.get_args_optional_info(**kwargs)
         if len(args_optional_info) > 0:
             function_description += "\nThe following options are available for some of the parameters in the current environment: \n"
-            for name, desc in self.args_optional_info.items():
+            for name, desc in args_optional_info.items():
                 function_description += f"{name}: {desc}\n"
         describe = {
             "name": self.name,
