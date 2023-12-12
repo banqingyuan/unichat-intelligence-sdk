@@ -3,7 +3,7 @@ import random
 import threading
 import time
 from queue import Queue
-from typing import Optional, Dict, List, Union
+from typing import Optional, Dict, List, Union, Any
 
 from common_py.utils.logger import wrapper_std_output, wrapper_azure_log_handler
 
@@ -55,10 +55,8 @@ class AIActionStrategy:
         # strategy中绑定的action可以是多个，但是要求function describe必须一样。
         # 因为strategy的func des 是根据action透传的，并提供给llm做function call的判断.
         # 在多个action的情况下，会默认提供字典中首个action的function call describe
-        self.actions = kwargs['actions']
-        self.action_instance_dict: Dict[str, Union[BluePrintInstance, ActionNode]] = {}
-
-        self._init_action_instance()
+        self.actions: Dict[str, Dict[str, Any]] = kwargs['actions']
+        # self.action_instance_dict: Dict[str, Union[BluePrintInstance, ActionNode]] = {}
 
         self.thread_lock = threading.Lock()
         self._check_valid()
@@ -70,29 +68,32 @@ class AIActionStrategy:
                 return
             if len(self.actions) == 1:
                 action_id = list(self.actions.values())[0]['action_id']
-                return self.action_instance_dict.get(action_id, None)
+                return self._get_action_instance(action_id=action_id)
             else:
                 action_id_lst = [action['action_id'] for action in self.actions.values()]
                 action_weight_lst = [int(action['weight']) for action in self.actions.values()]
                 execute_action_id = random.choices(action_id_lst, weights=action_weight_lst, k=1)[0]
-                return self.action_instance_dict.get(execute_action_id, None)
+                return self._get_action_instance(action_id=execute_action_id)
         except Exception as e:
             logger.exception(e)
             return None
 
-    def _init_action_instance(self):
-        for _, action_config in self.actions.items():
-            action_id = action_config['action_id']
-            action_instance = self._get_action_instance(**action_config)
-            if action_instance:
-                self.action_instance_dict[action_id] = action_instance
+    # def _init_action_instance(self):
+    #     for _, action_config in self.actions.items():
+    #         action_id = action_config['action_id']
+    #         action_instance = self._get_action_instance(**action_config)
+    #         if action_instance:
+    #             self.action_instance_dict[action_id] = action_instance
 
-    def _get_action_instance(self, **config) -> Union[None, ActionNode, BluePrintInstance]:
+    def _get_action_instance(self, action_id: str) -> Union[None, ActionNode, BluePrintInstance]:
         # 满足条件后需要执行的动作
         # todo Action单独一张表 剧本：ActionScript 单独一张表，蓝图单独一张表，触发单独一张表
         # 这里是触发的结构，触发可以绑定ActionNode，也可以绑定蓝图，但是不可以直接绑定Action
         try:
-            action_id = config['action_id']
+            config = self.actions.get(action_id, None)
+            if not config:
+                logger.error(f"action config not found: {action_id}")
+                return None
             if config['action_type'] == StrategyActionType_BluePrint:
                 instance = BluePrintManager().get_instance(action_id,
                                                            channel_name=self.channel_name,
@@ -147,17 +148,21 @@ class AIActionStrategy:
         return self._init_func_describe(**kwargs)
 
     def _init_func_describe(self, **kwargs) -> Optional[Dict]:
-        if len(self.action_instance_dict) == 0:
+        if len(self.actions) == 0:
             logger.error(f"invalid actions: {self.strategy_id} caused by empty actions")
             return None
-        if len(self.action_instance_dict) > 1:
+        if len(self.actions) > 1:
             for _, config in self.actions.items():
                 action_id = config['action_id']
                 if 'use_for_function_describe' in config and config['use_for_function_describe']:
-                    instance = self.action_instance_dict.get(action_id, None)
+                    instance = self._get_action_instance(action_id=action_id)
                     if instance:
                         return instance.gen_function_call_describe(**kwargs)
-        return list(self.action_instance_dict.values())[0].gen_function_call_describe(**kwargs)
+        action_id = list(self.actions.values())[0]['action_id']
+        instance = self._get_action_instance(action_id=action_id)
+        if instance:
+            return instance.gen_function_call_describe(**kwargs)
+        return None
 
     def _check_effective(self):
         if time.time() < self.start_time or time.time() > self.end_time:

@@ -269,6 +269,9 @@ class AIStrategyManager:
         func_describe_lst = []
         for strategy in potential_strategy_lst:
             func_describe = strategy.get_function_describe(trigger_event=current_event)
+            if not func_describe:
+                logger.error("strategy.get_function_describe get None")
+                continue
             describe_strategy_idx[func_describe['name']] = strategy.strategy_id
             if func_describe is not None:
                 func_describe_lst.append(func_describe)
@@ -317,7 +320,7 @@ class AIStrategyManager:
             args = res.arguments
             if function_name == 'InformationSupplement':
                 if len(args) > 0 and 'information_to_be_added' in args:
-                    return True, Message(role='system', content=f'More information required. {args}')
+                    return True, Message(role='system', content=f'More information required. {args}'), None
                 return True, None, None
             strategy_id = describe_strategy_idx.get(function_name, None)
             if not strategy_id:
