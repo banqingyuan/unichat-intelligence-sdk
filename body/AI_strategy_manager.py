@@ -223,12 +223,11 @@ class AIStrategyManager:
         if not strategy.execute_count():
             self.unbundle_trigger(strategy)
         execute_action = strategy.get_action()
-        execute_action.set_params(**params)
 
         if not execute_action:
             logger.error(f"Strategy {strategy_id} execute error cause by action not found")
             return None
-
+        execute_action.set_params(**params)
         if isinstance(execute_action, BluePrintInstance):
             return execute_action
 

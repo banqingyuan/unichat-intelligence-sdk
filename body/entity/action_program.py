@@ -168,7 +168,9 @@ class ActionProgramMgr:
                 logger.error(f"action atom {atom_id} not found")
                 return None
             action_instance = BaseActionMgr().action_factory(po.action_type)
-
+            if not action_instance:
+                logger.error(f"action instance {po.action_type} not found")
+                return None
             action_atom = ActionAtom(
                 atom_id=po.atom_id,
                 name=po.atom_name,

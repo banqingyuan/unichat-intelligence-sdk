@@ -91,23 +91,27 @@ class AIActionStrategy:
         # 满足条件后需要执行的动作
         # todo Action单独一张表 剧本：ActionScript 单独一张表，蓝图单独一张表，触发单独一张表
         # 这里是触发的结构，触发可以绑定ActionNode，也可以绑定蓝图，但是不可以直接绑定Action
-        action_id = config['action_id']
-        if config['action_type'] == StrategyActionType_BluePrint:
-            instance = BluePrintManager().get_instance(action_id,
-                                                       channel_name=self.channel_name,
-                                                       action_queue=self.action_queue,
-                                                       memory_mgr=self.memory_mgr)
-        elif config['action_type'] == StrategyActionType_Action:
-            instance = ActionNodeMgr().get_action_node(action_id)
-        else:
-            logger.error(f"invalid action_type: {config['action_type']}")
+        try:
+            action_id = config['action_id']
+            if config['action_type'] == StrategyActionType_BluePrint:
+                instance = BluePrintManager().get_instance(action_id,
+                                                           channel_name=self.channel_name,
+                                                           action_queue=self.action_queue,
+                                                           memory_mgr=self.memory_mgr)
+            elif config['action_type'] == StrategyActionType_Action:
+                instance = ActionNodeMgr().get_action_node(action_id)
+            else:
+                logger.error(f"invalid action_type: {config['action_type']}")
+                return None
+            if not instance:
+                logger.error(f"action instance not found: {action_id}")
+                return None
+            if 'preset_params' in config:
+                instance.set_params(**config['preset_params'])
+            return instance
+        except Exception as e:
+            logger.exception(e)
             return None
-        if not instance:
-            logger.error(f"action instance not found: {action_id}")
-            return None
-        if 'preset_params' in config:
-            instance.set_params(**config['preset_params'])
-        return instance
 
     def _check_valid(self):
         for key in self.must_provide:
