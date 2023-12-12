@@ -268,7 +268,7 @@ class AIStrategyManager:
         describe_strategy_idx = {}
         func_describe_lst = []
         for strategy in potential_strategy_lst:
-            func_describe = strategy.get_function_describe()
+            func_describe = strategy.get_function_describe(trigger_event=current_event)
             describe_strategy_idx[func_describe['name']] = strategy.strategy_id
             if func_describe is not None:
                 func_describe_lst.append(func_describe)
@@ -288,7 +288,7 @@ class AIStrategyManager:
                 required=['information_to_be_added']
             )
         )
-        func_describe_lst.append(func_describe.gen_function_call_describe())
+        func_describe_lst.append(func_describe.gen_function_call_describe(trigger_event=current_event))
 
         chat_client = ChatGPTClient()
         messages = []
