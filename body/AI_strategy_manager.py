@@ -17,7 +17,7 @@ from common_py.model.system_hint import SystemHintEvent, new_system_hint_event
 from common_py.utils.channel.util import get_AID_from_channel
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
 from body.blue_print.bp_instance import BluePrintInstance
-from body.const import CollectionName_LUI
+from body.const import CollectionName_LUI, function_call_prompt
 from body.entity.action_node import ActionNode
 from body.entity.function_call import FunctionDescribe, Parameter, Properties
 from body.entity.trigger.base_tirgger import BaseTrigger
@@ -276,30 +276,27 @@ class AIStrategyManager:
             if func_describe is not None:
                 func_describe_lst.append(func_describe)
 
-        func_describe = FunctionDescribe(
-            name="InformationSupplement",
-            description="If there is a suitable function call but the required parameter information is incomplete, "
-                        "please call this function",
-            parameters=Parameter(
-                type='object',
-                properties={
-                    "information_to_be_added": Properties(
-                        type='string',
-                        description="Describe the information to be add"
-                    )
-                },
-                required=['information_to_be_added']
-            )
-        )
-        func_describe_lst.append(func_describe.gen_function_call_describe(trigger_event=current_event))
+        # func_describe = FunctionDescribe(
+        #     name="InformationSupplement",
+        #     description="If there is a suitable function call but the required parameter information is incomplete, "
+        #                 "please call this function",
+        #     parameters=Parameter(
+        #         type='object',
+        #         properties={
+        #             "information_to_be_added": Properties(
+        #                 type='string',
+        #                 description="Describe the information to be add"
+        #             )
+        #         },
+        #         required=['information_to_be_added']
+        #     )
+        # )
+        # func_describe_lst.append(func_describe.gen_function_call_describe(trigger_event=current_event))
 
         chat_client = ChatGPTClient()
         messages = []
         message = Message(role='system',
-                          content='''You should choose the appropriate function call based on the 
-        contextual information provided; in principle, always use function call, and if there is no appropriate 
-        function, output "no appropriate function call".Don't make assumptions about what values to plug into functions.
-        If the required parameters are not complete, InformationSupplement should be called''')
+                          content=function_call_prompt)
         messages.extend([m.get_message_from_event() for m in trigger_events])
         messages.append(message)
 
@@ -353,7 +350,7 @@ class AIStrategyManager:
                 trigger_id=item.meta['trigger_id'],
                 corpus_text=str(item.documents)
             ) for item in vdb_res]
-            logger.info(f"eval_trigger: {[result.json() for result in results]}")
+            logger.info(f"eval_trigger: {[result.json() for result in results]} target_text is {target_text}")
             trigger_id_map = {}
             for result in results:
                 trigger_id_map[result.trigger_id] = True
