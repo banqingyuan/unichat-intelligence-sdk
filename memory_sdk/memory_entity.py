@@ -28,6 +28,8 @@ AI_memory_topic_mentioned_last_time = "topic_mentioned_last_time"
 AI_memory_time_since_last_met_description = "time_since_last_met_description"
 AI_memory_time_duration_since_last_met = "time_duration_since_last_met"
 
+AI_memory_if_first_met = "if_first_met"
+
 
 class UserMemoryEntity:
     """
@@ -58,6 +60,7 @@ class UserMemoryEntity:
         self.user_language = ""
         self.intimacy_point = 0
         self.intimacy_level = 'just_met'
+        self.if_first_met_tag = False
 
         self.ideal_level = ''
 
@@ -92,6 +95,9 @@ class UserMemoryEntity:
         self.intimacy_point = result.get(AI_memory_intimacy_point, 0)
         self.intimacy_level = result.get(AI_memory_intimacy_level, 'just_met')
         self.user_language: str = result.get(AI_memory_user_language, '')
+        first_met = result.get(AI_memory_if_first_met, None)
+        if first_met == 'first_met':
+            self.if_first_met_tag = True
 
     def get_target_name(self):
         return self.target_nickname
@@ -105,6 +111,14 @@ class UserMemoryEntity:
         self.user_language = language_code
         self._element_stash(AI_memory_user_language, language_code)
         self.save_stash()
+
+    def set_first_met(self):
+        self.if_first_met_tag = True
+        self._element_stash(AI_memory_if_first_met, 'first_met')
+        self.save_stash()
+
+    def if_first_met(self):
+        return self.if_first_met_tag
 
     def get_user_language(self) -> str:
         return self.user_language
@@ -161,6 +175,7 @@ class UserMemoryEntity:
             AI_memory_target_id: self.target_id,
             AI_memory_target_type: self.target_type,
             AI_memory_source_id: self.AID,
+            AI_memory_if_first_met: self.if_first_met_tag
         }
 
     def save_stash(self):
@@ -181,6 +196,7 @@ class UserMemoryEntity:
         """
         try:
             self._element_stash(AI_memory_last_met_timestamp, str(int(time.time())))
+            self._element_stash(AI_memory_if_first_met, 'not_first_met')
 
             self.redis_client.hincrby(RedisAIMemoryInfo.format(source_id=self.AID, target_id=self.target_id),
                                       AI_memory_met_times, 1)
