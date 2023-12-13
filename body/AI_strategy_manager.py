@@ -13,7 +13,7 @@ from common_py.dto.lui_trigger import LUITriggerInfo
 from common_py.model.base import BaseEvent
 from common_py.model.chat import ConversationEvent
 from common_py.model.scene.scene import SceneEvent
-from common_py.model.system_hint import SystemHintEvent
+from common_py.model.system_hint import SystemHintEvent, new_system_hint_event
 from common_py.utils.channel.util import get_AID_from_channel
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
 from body.blue_print.bp_instance import BluePrintInstance
@@ -320,7 +320,12 @@ class AIStrategyManager:
             args = res.arguments
             if function_name == 'InformationSupplement':
                 if len(args) > 0 and 'information_to_be_added' in args:
-                    return True, Message(role='system', content=f'More information required. {args}'), None
+                    return True, new_system_hint_event(
+                        channel_name=self.channel_name,
+                        message=f"More information required. {args}",
+                        UUID=current_event.UUID,
+                        target_uid=current_event.get_UID()
+                    ), None
                 return True, None, None
             strategy_id = describe_strategy_idx.get(function_name, None)
             if not strategy_id:
