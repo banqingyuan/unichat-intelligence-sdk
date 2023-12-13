@@ -67,13 +67,13 @@ class AIActionStrategy:
                 logger.error(f"invalid actions: {self.strategy_id}")
                 return
             if len(self.actions) == 1:
-                action_id = list(self.actions.values())[0]['action_id']
-                return self._get_action_instance(action_id=action_id)
+                action_key = list(self.actions.keys())[0]
+                return self._get_action_instance(action_key=action_key)
             else:
-                action_id_lst = [action['action_id'] for action in self.actions.values()]
+                action_keys = [action_key for action_key in self.actions.keys()]
                 action_weight_lst = [int(action['weight']) for action in self.actions.values()]
-                execute_action_id = random.choices(action_id_lst, weights=action_weight_lst, k=1)[0]
-                return self._get_action_instance(action_id=execute_action_id)
+                execute_action_key = random.choices(action_keys, weights=action_weight_lst, k=1)[0]
+                return self._get_action_instance(action_key=execute_action_key)
         except Exception as e:
             logger.exception(e)
             return None
@@ -85,15 +85,16 @@ class AIActionStrategy:
     #         if action_instance:
     #             self.action_instance_dict[action_id] = action_instance
 
-    def _get_action_instance(self, action_id: str) -> Union[None, ActionNode, BluePrintInstance]:
+    def _get_action_instance(self, action_key: str) -> Union[None, ActionNode, BluePrintInstance]:
         # 满足条件后需要执行的动作
         # todo Action单独一张表 剧本：ActionScript 单独一张表，蓝图单独一张表，触发单独一张表
         # 这里是触发的结构，触发可以绑定ActionNode，也可以绑定蓝图，但是不可以直接绑定Action
         try:
-            config = self.actions.get(action_id, None)
+            config = self.actions.get(action_key, None)
             if not config:
-                logger.error(f"action config not found: {action_id}")
+                logger.error(f"action config not found: {action_key}")
                 return None
+            action_id = config['action_id']
             if config['action_type'] == StrategyActionType_BluePrint:
                 instance = BluePrintManager().get_instance(action_id,
                                                            channel_name=self.channel_name,
@@ -152,14 +153,13 @@ class AIActionStrategy:
             logger.error(f"invalid actions: {self.strategy_id} caused by empty actions")
             return None
         if len(self.actions) > 1:
-            for _, config in self.actions.items():
-                action_id = config['action_id']
+            for action_key, config in self.actions.items():
                 if 'use_for_function_describe' in config and config['use_for_function_describe']:
-                    instance = self._get_action_instance(action_id=action_id)
+                    instance = self._get_action_instance(action_key=action_key)
                     if instance:
                         return instance.gen_function_call_describe(**kwargs)
-        action_id = list(self.actions.values())[0]['action_id']
-        instance = self._get_action_instance(action_id=action_id)
+        action_key = list(self.actions.keys())[0]
+        instance = self._get_action_instance(action_key=action_key)
         if instance:
             return instance.gen_function_call_describe(**kwargs)
         return None
