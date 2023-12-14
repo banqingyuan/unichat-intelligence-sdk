@@ -315,15 +315,15 @@ class AIStrategyManager:
             if not function_name:
                 return True, None, None
             args = res.arguments
-            if function_name == 'InformationSupplement':
-                if len(args) > 0 and 'information_to_be_added' in args:
-                    return True, new_system_hint_event(
-                        channel_name=self.channel_name,
-                        message=f"More information required. {args}",
-                        UUID=current_event.UUID,
-                        target_uid=current_event.get_UID()
-                    ), None
-                return True, None, None
+            # if function_name == 'InformationSupplement':
+            #     if len(args) > 0 and 'information_to_be_added' in args:
+            #         return True, new_system_hint_event(
+            #             channel_name=self.channel_name,
+            #             message=f"More information required. {args}",
+            #             UUID=current_event.UUID,
+            #             target_uid=current_event.get_UID()
+            #         ), None
+            #     return True, None, None
             strategy_id = describe_strategy_idx.get(function_name, None)
             if not strategy_id:
                 logger.error(f"The lui called can not match strategy_id, function name: {function_name}")
@@ -336,7 +336,8 @@ class AIStrategyManager:
 
     def eval_lui_trigger(self, potential_triggers: List[str], target_text: str) -> Dict:
         try:
-            if target_text is None or len(target_text.strip()) == 0:
+            target_text = target_text.strip()
+            if target_text is None or len(target_text) == 0:
                 return {}
             vdb_res: List[VectorRecordItem] = self.lui_collection.query(
                 input_data=target_text,

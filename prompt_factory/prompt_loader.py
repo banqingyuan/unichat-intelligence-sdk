@@ -182,28 +182,28 @@ class PromptLoader:
                     except Exception as e:
                         logger.exception(e)
                         continue
-                elif 'vector_database' in variable:
-                    try:
-                        vdb_info = variable['vector_database']
-                        model = vdb_info['model']
-                        meta_filter = vdb_info['meta_filter']
-                        top_k = vdb_info.get('top_k', 2)
-                        threshold = vdb_info.get('threshold', None)
-                        content_field = vdb_info['content_field']
-                        if model == 'UnichatKnowledge':
-                            if chat_input is None or len(chat_input) == 0:
-                                continue
-                            res = query_vector_info(UnichatKnowledge, chat_input, meta_filter, top_k, threshold=threshold)
-                            if res is None or len(res) == 0:
-                                continue
-                        else:
-                            logger.error(f"model {model} not supported")
-                            continue
-                        var_res = '\n'.join([item[content_field] for item in res])
-                        variable_res[key] = var_res
-                    except KeyError as e:
-                        logger.exception(e)
-                        continue
+                # elif 'vector_database' in variable:
+                #     try:
+                #         vdb_info = variable['vector_database']
+                #         model = vdb_info['model']
+                #         meta_filter = vdb_info['meta_filter']
+                #         top_k = vdb_info.get('top_k', 2)
+                #         threshold = vdb_info.get('threshold', None)
+                #         content_field = vdb_info['content_field']
+                #         if model == 'UnichatKnowledge':
+                #             if chat_input is None or len(chat_input) == 0:
+                #                 continue
+                #             res = query_vector_info(UnichatKnowledge, chat_input, meta_filter, top_k, threshold=threshold)
+                #             if res is None or len(res) == 0:
+                #                 continue
+                #         else:
+                #             logger.error(f"model {model} not supported")
+                #             continue
+                #         var_res = '\n'.join([item[content_field] for item in res])
+                #         variable_res[key] = var_res
+                #     except KeyError as e:
+                #         logger.exception(e)
+                #         continue
 
                 # else:
                 # if 'db_source' not in variable:

@@ -154,9 +154,9 @@ if __name__ == '__main__':
     MongoDBClient(DB_NAME="unichat-backend")
     TriggerMgr()
     # print(TriggerMgr().vdb_collection.get())
-    res = TriggerMgr().vdb_collection.query(input_data="can you speak chinese", meta_filter={
-        "trigger_id": {"$in": ["lui_trigger_change_AI_language_id"]}
-    },include=["metadatas", "documents", "distances", "embeddings"])
-    print(len(res[0].embedding))
+    res = TriggerMgr().vdb_collection.query(input_data="speak Chinese", meta_filter={
+        # "trigger_id": {"$in": ["lui_trigger_change_AI_language_id"]}
+    }, include=["metadatas", "documents", "distances"])
+    print(res)
 
 
