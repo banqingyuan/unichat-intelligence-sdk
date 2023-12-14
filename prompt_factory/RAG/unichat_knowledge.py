@@ -45,8 +45,10 @@ class KnowledgeMgr:
             if check_sum == self.check_sum:
                 return
             query_results = self.knowledge_vector_collection.get(where={})
-            all_ids = [item.id for item in query_results]
-            self.knowledge_vector_collection.delete(ids=all_ids)
+            if len(query_results) > 0:
+
+                all_ids = [item.id for item in query_results]
+                self.knowledge_vector_collection.delete(ids=all_ids)
 
             items = []
             for item in knowledge_block:
