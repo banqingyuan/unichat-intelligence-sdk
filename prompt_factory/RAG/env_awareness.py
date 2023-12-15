@@ -108,17 +108,19 @@ class EnvRAGMgr:
 
         getter_dict = {}
         for item in results:
-            getter_id = item.meta.get("getter_id", None)
-            if getter_id:
-                getter = self._getter_dict.get(getter_id, None)
+            getter_name = item.meta.get("getter_name", None)
+            if getter_name:
+                getter = self._getter_dict.get(getter_name, None)
                 if getter:
-                    getter_dict[getter_id] = getter
+                    getter_dict[getter_name] = getter
 
         system_prompt = "Here is additional information about the current scene:\n {env_addition_info}"
-        env_addition_info = '\n'.join(
-            [getter(**{'channel_name': channel_name}) for getter in getter_dict.values()]
-        )
-        return system_prompt.format(env_addition_info=env_addition_info)
+        if len(getter_dict) > 0:
+            env_addition_info = '\n'.join(
+                [getter(**{'channel_name': channel_name}) for getter in getter_dict.values()]
+            )
+            return system_prompt.format(env_addition_info=env_addition_info)
+        return ''
 
     def __new__(cls, *args, **kwargs):
         if not hasattr(EnvRAGMgr, "_instance"):
