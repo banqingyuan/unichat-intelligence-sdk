@@ -68,12 +68,12 @@ class KnowledgeMgr:
             threading.Timer(5 * 60, self._refresh).start()
 
     def query(self, input_message: str) -> str:
-        results = self.knowledge_vector_collection.query(input_data=input_message, meta_filter={}, top_k=3, threshold=0.6)
+        results = self.knowledge_vector_collection.query(input_data=input_message, meta_filter={}, top_k=3, threshold=0.5)
 
         info_tpl = "Provided are potential references about the App: \n {app_knowledge}\n Evaluate their relevancy. You may inform the user their query is unsupported or in development if the info is insufficient."
         knowledge_block = []
         for item in results:
-            knowledge_block.append(item.documents)
+            knowledge_block.append(item.documents.strip())
         if len(knowledge_block) == 0:
             return ''
         app_knowledge = '\n'.join(knowledge_block)
