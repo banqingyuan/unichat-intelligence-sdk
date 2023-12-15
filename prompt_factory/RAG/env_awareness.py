@@ -61,9 +61,12 @@ class EnvGetCurrentRoomPlayer(BaseInfoGetter):
             player_description = "Here is the list of players in the room:\n"
             play_lst = room_info.playerList
             for player in play_lst:
-                player_description += f"{player.objectDisplayName}: {player.objectDescription}\n"
+                player_description += f"{player.objectDisplayName}: player character.\n"
             for AI in room_info.AICharacterList:
-                player_description += f"{AI.objectDisplayName}: {AI.objectDescription}\n"
+                if AI.objectDisplayName == '':
+                    logger.error(f"AI.objectDisplayName is empty: {AI.objectNameID}")
+                    continue
+                player_description += f"{AI.objectDisplayName}: NPC friends of player.\n"
             return player_description
         except Exception as e:
             logger.exception(e)
