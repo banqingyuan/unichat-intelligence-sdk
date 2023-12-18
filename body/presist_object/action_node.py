@@ -17,6 +17,7 @@ class ActionNodePo(BaseModel):
     node_id: str
     queuing_time: str = '1'
     system_prompt: Optional[str] = None
+    preset_args: Optional[Dict[str, str]] = None
 
     node_name: str
 

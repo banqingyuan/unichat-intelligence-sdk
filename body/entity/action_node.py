@@ -36,6 +36,8 @@ class ActionNode(FunctionDescribe):
     action_program: Optional[ActionProgram]
     action_Atom: Optional[ActionAtom]
 
+    preset_args: Optional[Dict[str, str]] = None
+
     def __init__(self,  **kwargs):
         super().__init__(**kwargs)
 
@@ -43,6 +45,7 @@ class ActionNode(FunctionDescribe):
             self.action_Atom = ActionProgramMgr().get_action_atom(kwargs['action_id'])
         elif self.action_type == ActionType_Program:
             self.action_program = ActionProgramMgr().get_action_program(kwargs['action_id'])
+        self.set_params(**self.preset_args)
 
     def set_params(self, **params):
         if self.action_type == ActionType_Atom:
@@ -92,6 +95,7 @@ class ActionNodeMgr:
                 description=action_node_po.description,
                 queuing_time=int(action_node_po.queuing_time),
                 system_hint=action_node_po.system_prompt,
+                preset_args=action_node_po.preset_args
             )
         except Exception as e:
             logger.exception(e)

@@ -20,7 +20,7 @@ router_prompt = """
 ##### Mission Purpose
 {mission_purpose}
 
-##### Known Conditions
+##### Known Context
 {known_conditions}
 
 ##### Expected Output

@@ -78,7 +78,7 @@ class BluePrintInstance:
             self.current_node = portal_node_instance
 
             self.action_queue: Optional[queue.Queue] = kwargs['action_queue']
-            self.llm_client = ChatGPTClient(temperature=0)
+            self.llm_client = ChatGPTClient(temperature=0.6)
             self.memory_mgr: MemoryManager = kwargs['memory_mgr']
             self.channel_name: str = ''
         except KeyError as e:
@@ -180,7 +180,6 @@ class BluePrintInstance:
     def _execute_router(self, node: RouterNode, trigger_event: BaseEvent) -> (str, Dict[str, str]):
         # 首先判断是否使用脚本路由，如果不使用，默认使用llm路由
         # 如果是conversation event, 暂不支持使用脚本路由
-        # todo 脚本路由实现
         if isinstance(trigger_event, ConversationEvent):
             return self._execute_llm_router(node, trigger_event)
         shared_conditions = ''
@@ -263,6 +262,20 @@ class BluePrintInstance:
             mission_purpose=mission_purpose,
             known_conditions=known_conditions,
         )
+
+        for i in range(3):
+            try:
+                function_name, arguments = self._query_llm_and_get_function_call_resp(prompt, trigger_event, functions)
+                if function_name not in function_name_to_instance:
+                    logger.error(f"Function name {function_name} not found")
+                    raise FunctionCallException(f"Function name {function_name} not found")
+                func_id = function_name_to_instance[function_name].id
+                return func_id, arguments
+            except FunctionCallException as e:
+                logger.warning(f"Function call failed: {e} try again")
+                continue
+
+    def _query_llm_and_get_function_call_resp(self, prompt: str, trigger_event: BaseEvent, functions: List[Dict]) -> (str, Dict[str, str]):
         resp = self.llm_client.generate(
             messages=[
                 Message(role='system', content=prompt),
@@ -270,13 +283,11 @@ class BluePrintInstance:
             UUID=trigger_event.UUID,
             functions=functions,
         )
+        logger.info(f"_query_llm_and_get_function_call_resp llm response: {resp.json()}")
         if isinstance(resp, OpenAIChatResponse):
             if resp.function_name is not None and resp.function_name != '':
-                func = function_name_to_instance.get(resp.function_name, None)
-                if not func:
-                    raise FunctionCallException(f"Function name {resp.function_name} not found with response {resp.json()}")
                 # params 的引用持有不会影响到func的释放
-                return func.id, resp.arguments
+                return resp.function_name, resp.arguments
             else:
                 raise FunctionCallException(f"Function name is empty with response {resp.json()}")
         else:
