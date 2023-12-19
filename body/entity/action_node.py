@@ -65,10 +65,15 @@ class ActionNode(FunctionDescribe):
             return self.action_program.execute()
 
     def gen_function_call_describe(self, **kwargs):
+        function_call_describe = {}
         if self.action_type == ActionType_Atom:
-            return self.action_Atom.gen_function_call_describe(**kwargs)
+            function_call_describe = self.action_Atom.gen_function_call_describe(**kwargs)
         elif self.action_type == ActionType_Program:
-            return self.action_program.gen_function_call_describe(**kwargs)
+            function_call_describe = self.action_program.gen_function_call_describe(**kwargs)
+        if self.description != '':
+            function_call_describe['description'] = self.description
+        return function_call_describe
+
 
 
 class ActionNodeMgr:

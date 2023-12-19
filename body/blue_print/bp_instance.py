@@ -2,7 +2,7 @@ import logging
 import queue
 import threading
 from typing import Dict, Optional, List, Union, Any
-from common_py.ai_toolkit.openAI import ChatGPTClient, Message, OpenAIChatResponse
+from common_py.ai_toolkit.openAI import ChatGPTClient, Message, OpenAIChatResponse, Model_gpt4
 from common_py.dto.ai_instance import AIBasicInformation, InstanceMgr
 from common_py.dto.user import UserBasicInformation, UserInfoMgr
 from common_py.model.base import BaseEvent
@@ -275,6 +275,7 @@ class BluePrintInstance:
             except FunctionCallException as e:
                 logger.warning(f"Function call failed: {e} try again")
                 continue
+        return None, None
 
     def _query_llm_and_get_function_call_resp(self, prompt: str, trigger_event: BaseEvent, functions: List[Dict]) -> (str, Dict[str, str]):
         resp = self.llm_client.generate(
@@ -283,6 +284,7 @@ class BluePrintInstance:
             ],
             UUID=trigger_event.UUID,
             functions=functions,
+            model_source=Model_gpt4,
         )
         logger.info(f"_query_llm_and_get_function_call_resp llm response: {resp.json()}")
         if isinstance(resp, OpenAIChatResponse):
