@@ -107,15 +107,14 @@ class BluePrintInstance:
         if current_node.script_router is not None:
             if isinstance(event, ConversationEvent):
                 # script_router expect a SceneEvent
-                return BluePrintResult_Ignore, None
-        else:
-            # then it must be a llm router
-            if not isinstance(event, ConversationEvent):
-                return self._collect_blue_print_fc_describe()
-            else:
                 self.unactive_time_count += 1
                 if self.unactive_time_count > (self.self_cancel_limit + 1):
                     return BluePrintResult_SelfKill, None
+                return self._collect_blue_print_fc_describe()
+        else:
+            # then it must be a llm router
+            if not isinstance(event, ConversationEvent):
+                return BluePrintResult_Ignore, None
         execute_status = self._execute(event)
         return execute_status, None
 
@@ -147,7 +146,7 @@ class BluePrintInstance:
                     # 在蓝图中进入Action节点，不需要前置判断
                     # if next_node.pre_loading(event):
                     self.action_queue.put((next_node, event))
-                    next_router_node_name = self._get_child_node_of_action_node(self.current_node_name)
+                    next_router_node_name = self._get_child_node_of_action_node(next_node_name)
                     if not next_router_node_name:
                         return BluePrintResult_Finished
                     self.current_node_name = next_router_node_name
@@ -367,8 +366,9 @@ class BluePrintManager:
                 name=bp_po.bp_name,
                 description=bp_po.description,
                 portal_node=bp_po.portal_node,
-                action_nodes=bp_po.action_nodes,
-                router_nodes=bp_po.router_nodes,
+                # action_nodes=bp_po.action_nodes,
+                # router_nodes=bp_po.router_nodes,
+                nodes_dict=bp_po.nodes_dict,
                 connections=bp_po.connections,
                 channel_name=channel_name,
                 llm_client=llm_client,

@@ -26,10 +26,10 @@ class BluePrintPo(BaseModel):
     portal_node: str
 
     # type BpActionNode
-    action_nodes: List[str]
-    router_nodes: List[str]
+    # action_nodes: List[str]
+    # router_nodes: List[str]
 
-    # key: node_name, value: {"type": "router/action", "tpl_name": "", "preset_args": {}}
+    # key: node_name, value: {"node_type": "router/action", "node_id": "", "preset_args": {}}
     nodes_dict: Dict[str, Dict[str, Any]]
 
     connections: Dict[str, Dict[str, Dict[str, str]]]    # 有向有环图

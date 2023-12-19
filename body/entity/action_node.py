@@ -45,7 +45,8 @@ class ActionNode(FunctionDescribe):
             self.action_Atom = ActionProgramMgr().get_action_atom(kwargs['action_id'])
         elif self.action_type == ActionType_Program:
             self.action_program = ActionProgramMgr().get_action_program(kwargs['action_id'])
-        self.set_params(**self.preset_args)
+        if self.preset_args:
+            self.set_params(**self.preset_args)
 
     def set_params(self, **params):
         if self.action_type == ActionType_Atom:
