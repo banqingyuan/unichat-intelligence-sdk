@@ -1,5 +1,5 @@
 import logging
-from typing import List, Dict
+from typing import List, Dict, Any
 
 from common_py.client.azure_mongo import MongoDBClient
 from common_py.utils.logger import wrapper_std_output, wrapper_azure_log_handler
@@ -28,6 +28,9 @@ class BluePrintPo(BaseModel):
     # type BpActionNode
     action_nodes: List[str]
     router_nodes: List[str]
+
+    # key: node_name, value: {"type": "router/action", "tpl_name": "", "preset_args": {}}
+    nodes_dict: Dict[str, Dict[str, Any]]
 
     connections: Dict[str, Dict[str, Dict[str, str]]]    # 有向有环图
 

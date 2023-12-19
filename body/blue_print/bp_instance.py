@@ -1,7 +1,7 @@
 import logging
 import queue
 import threading
-from typing import Dict, Optional, List, Union
+from typing import Dict, Optional, List, Union, Any
 from common_py.ai_toolkit.openAI import ChatGPTClient, Message, OpenAIChatResponse
 from common_py.dto.ai_instance import AIBasicInformation, InstanceMgr
 from common_py.dto.user import UserBasicInformation, UserInfoMgr
@@ -63,19 +63,18 @@ class BluePrintInstance:
 
             self.unactive_time_count = 0
 
-            # key is node_id, value is node type
-            self.nodes_typ_idx: Dict[str, str] = {}
-
             # eg. {'上游节点id', {'下游节点id', {'上游出参': '下游入参'}}}
             self.connection_mapping: Dict[str, Dict[str, Dict[str, str]]] = kwargs['connections']
 
-            self._construct_blue_print(kwargs)
+            # self._construct_blue_print(kwargs)
+            self.nodes_dict: Dict[str, Dict[str, Any]] = kwargs['nodes_dict']
+            self.node_instance_dict: Dict[str, Union[RouterNode, ActionNode]] = {}
 
             portal_node_instance = self._get_node_instance(kwargs['portal_node'])
             if not portal_node_instance:
                 raise Exception("Portal node not found")
-            self.portal_node = portal_node_instance
-            self.current_node = portal_node_instance
+            self.portal_node_name = kwargs['portal_node']
+            self.current_node_name = kwargs['portal_node']
 
             self.action_queue: Optional[queue.Queue] = kwargs['action_queue']
             self.llm_client = ChatGPTClient(temperature=0.6)
@@ -85,25 +84,27 @@ class BluePrintInstance:
             logger.error(f"Missing key in blue print script: {e}")
             raise Exception("Missing key in blue print script")
 
-    def _construct_blue_print(self, bp_po: Dict):
-        """
-        只能存在一个节点被设置为入口
-        动作节点至多有一个出度，且出度只能指向路由节点
-        路由节点至少有一个出度
-        """
-        for node in bp_po['action_nodes']:
-            self.nodes_typ_idx[node] = BPNodeType_Action
-        for node in bp_po['router_nodes']:
-            self.nodes_typ_idx[node] = BPNodeType_Router
+    # def _construct_blue_print(self, bp_po: Dict):
+    #     """
+    #     只能存在一个节点被设置为入口
+    #     动作节点至多有一个出度，且出度只能指向路由节点
+    #     路由节点至少有一个出度
+    #     """
+    #     for node_name, node in self.nodes_dict.items():
+    #         if node['type'] == BPNodeType_Router:
+    #             self.nodes_typ_idx[node_name] = BPNodeType_Router
+    #         elif node['type'] == BPNodeType_Action:
+    #             self.nodes_typ_idx[node_name] = BPNodeType_Action
 
     def start_bp(self, event: BaseEvent) -> (str, Optional[list]):
         return self._execute(event)
 
     def execute(self, event: BaseEvent) -> (str, Optional[list]):
-        if not isinstance(self.current_node, RouterNode):
+        current_node = self.node_instance_dict[self.current_node_name]
+        if not isinstance(current_node, RouterNode):
             raise Exception("Current node is not router node")
 
-        if self.current_node.script_router is not None:
+        if current_node.script_router is not None:
             if isinstance(event, ConversationEvent):
                 # script_router expect a SceneEvent
                 return BluePrintResult_Ignore, None
@@ -128,35 +129,35 @@ class BluePrintInstance:
 
     def _execute(self, event: BaseEvent) -> str:
         try:
-            node = self.current_node
+            node = self.node_instance_dict[self.current_node_name]
             if isinstance(node, RouterNode):
-                next_node_id, params = self._execute_router(node, event)
-                if next_node_id is None or next_node_id == '':
+                next_node_name, params = self._execute_router(node, event)
+                if next_node_name is None or next_node_name == '':
                     logger.error(f"Next node id is empty: {node.id}")
                     return BluePrintResult_SelfKill
-                if next_node_id != node.id:
+                if next_node_name != node.id:
                     self.unactive_time_count = 0
-                next_node = self._get_node_instance(next_node_id)
+                next_node = self._get_node_instance(next_node_name)
                 if params:
                     next_node.set_params(**params)
                 if isinstance(next_node, RouterNode):
-                    self.current_node = next_node
+                    self.current_node_name = next_node_name
                     return self._execute(event)
                 elif isinstance(next_node, ActionNode):
                     # 在蓝图中进入Action节点，不需要前置判断
                     # if next_node.pre_loading(event):
                     self.action_queue.put((next_node, event))
-                    next_router_node = self._get_child_node_of_action_node(next_node.id, event.UUID, event.channel_name)
-                    if not next_router_node:
+                    next_router_node_name = self._get_child_node_of_action_node(self.current_node_name)
+                    if not next_router_node_name:
                         return BluePrintResult_Finished
-                    self.current_node = next_router_node
+                    self.current_node_name = next_router_node_name
                     return BluePrintResult_Executed
             if isinstance(node, ActionNode):
                 self.action_queue.put((node, event))
-                next_node = self._get_child_node_of_action_node(node.id, event.UUID, event.channel_name)
-                if not next_node:
+                next_node_name = self._get_child_node_of_action_node(self.current_node_name)
+                if not next_node_name:
                     return ''
-                self.current_node = next_node
+                self.current_node_name = next_node_name
                 return BluePrintResult_Executed
         except Exception as e:
             # todo 退出蓝图
@@ -165,7 +166,7 @@ class BluePrintInstance:
 
     def gen_function_call_describe(self, **kwargs) -> Optional[Dict]:
         # 入口是Router的话如何提供function call describe需要重新设计
-        node = self.current_node
+        node = self.node_instance_dict[self.current_node_name]
         if isinstance(node, ActionNode):
             return node.gen_function_call_describe(**kwargs)
         fd = FunctionDescribe(
@@ -175,7 +176,8 @@ class BluePrintInstance:
         return fd.gen_function_call_describe(**kwargs)
 
     def set_params(self, **kwargs):
-        self.portal_node.set_params(**kwargs)
+        node = self.node_instance_dict[self.portal_node_name]
+        node.set_params(**kwargs)
 
     def _execute_router(self, node: RouterNode, trigger_event: BaseEvent) -> (str, Dict[str, str]):
         # 首先判断是否使用脚本路由，如果不使用，默认使用llm路由
@@ -193,9 +195,9 @@ class BluePrintInstance:
         return self._execute_llm_router(node, trigger_event, shared_conditions)
 
     def _execute_router_script_node(self, node: RouterNode, event: BaseEvent) -> (str, str, Dict[str, str]):
-        nodes = self._get_all_child_node_id(node.id)
+        nodes_name = self._get_all_child_node_name(self.current_node_name)
         input_params = {
-            'optional_child_node': nodes,
+            'optional_child_node': nodes_name,
             'trigger_event': event,
             # 'tracer': execution_context.get_opencensus_tracer(),
             'next_node': None,
@@ -235,7 +237,7 @@ class BluePrintInstance:
         else:
             output_params = None
         if input_params['next_node'] is None or input_params['next_node'] == '':
-            logger.error(f"Next node id is empty: {node.id}")
+            logger.error(f"Next node name is empty: {self.current_node_name}")
             return '', input_params['shared_conditions'], output_params
         return input_params['next_node'], input_params['shared_conditions'], output_params
 
@@ -246,17 +248,21 @@ class BluePrintInstance:
             known_conditions += event.description() + '\n'
         if shared_conditions:
             known_conditions += shared_conditions + '\n'
-        child_nodes = self._get_all_child_node_id(router.id)
+        child_nodes = self._get_all_child_node_name(self.current_node_name)
         if child_nodes is None or len(child_nodes) == 0:
             logger.error(f"Router node {router.id} has no child node")
             return '', None
         functions = []
-        function_name_to_instance = {}
-        for child_node_id in child_nodes:
-            node_instance = self._get_node_instance(child_node_id)
-            function_name_to_instance[node_instance.name] = node_instance
-            # expected_output += f"{node.name},"
-            functions.append(node_instance.gen_function_call_describe())
+        for child_node_name in child_nodes:
+            node_instance = self._get_node_instance(child_node_name)
+
+            def replace_function_name_in_function_call_describe():
+                # function call 不能使用模板的function name，存在重复的可能性，需要使用蓝图中自定义的function name
+                function_call_description = node_instance.gen_function_call_describe()
+                function_call_description['name'] = child_node_name
+                return function_call_description
+
+            functions.append(replace_function_name_in_function_call_describe())
 
         prompt = const.router_prompt.format(
             mission_purpose=mission_purpose,
@@ -266,11 +272,7 @@ class BluePrintInstance:
         for i in range(3):
             try:
                 function_name, arguments = self._query_llm_and_get_function_call_resp(prompt, trigger_event, functions)
-                if function_name not in function_name_to_instance:
-                    logger.error(f"Function name {function_name} not found")
-                    raise FunctionCallException(f"Function name {function_name} not found")
-                func_id = function_name_to_instance[function_name].id
-                return func_id, arguments
+                return function_name, arguments
             except FunctionCallException as e:
                 logger.warning(f"Function call failed: {e} try again")
                 continue
@@ -293,36 +295,41 @@ class BluePrintInstance:
         else:
             raise FunctionCallException(f"Function call failed with response {resp.json()}")
 
-    def _get_child_node_of_action_node(self, node_id, UUID: str, channel_name: str) -> Optional[RouterNode]:
-        next_round_node_id = self._get_all_child_node_id(node_id)
-        if len(next_round_node_id) == 0:
+    def _get_child_node_of_action_node(self, node_name) -> Optional[str]:
+        next_round_node_name = self._get_all_child_node_name(node_name)
+        if len(next_round_node_name) == 0:
             return None
-        elif len(next_round_node_id) > 1:
-            logger.error(f"Action Node should not have more than one child node: {node_id}")
+        elif len(next_round_node_name) > 1:
+            logger.error(f"Action Node should not have more than one child node: {node_name}")
             return None
-        next_round_node = self._get_node_instance(next_round_node_id[0])
+        next_round_node = self._get_node_instance(next_round_node_name[0])
         if not isinstance(next_round_node, RouterNode):
-            logger.error(f"Next round node should be router node: {next_round_node.id}")
+            logger.error(f"Next round node should be router node: {next_round_node_name}")
             return None
-        return next_round_node
+        return next_round_node_name[0]
 
-    def _get_all_child_node_id(self, node_id: str) -> List[str]:
+    def _get_all_child_node_name(self, node_name: str) -> List[str]:
         nodes = []
-        if node_id not in self.connection_mapping:
+        if node_name not in self.connection_mapping:
             return nodes
-        child_node_ids = self.connection_mapping[node_id].keys()
-        for child_node_id in child_node_ids:
-            nodes.append(child_node_id)
+        child_node_names = self.connection_mapping[node_name].keys()
+        for child_node_name in child_node_names:
+            nodes.append(child_node_name)
         return nodes
 
-    def _get_node_instance(self, node_id: str) -> Union[RouterNode, ActionNode]:
-        node_typ = self.nodes_typ_idx[node_id]
+    def _get_node_instance(self, node_name: str) -> Union[RouterNode, ActionNode]:
+        node_info = self.nodes_dict.get(node_name, None)
+        if not node_info:
+            raise Exception(f"Node {node_name} not found")
+        node_id = node_info['node_id']
+        node_typ = node_info['node_type']
         if node_typ == BPNodeType_Action:
             node = ActionNodeMgr().get_action_node(node_id)
         elif node_typ == BPNodeType_Router:
             node = BPRouterManager().get_router(node_id)
         else:
             raise Exception("Unknown node type")
+        self.node_instance_dict[node_name] = node
         return node
 
 

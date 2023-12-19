@@ -307,7 +307,7 @@ class BlockManager:
 def load_all_block_from_mongo() -> List[EventBlock]:
     block_lst: List[EventBlock] = []
     mongo_client = MongoDBClient()
-    res = mongo_client.find_from_collection('AI_memory_block', filter={'participant_ids.22201426': {'$exists': True}})
+    res = mongo_client.find_from_collection('AI_memory_block', filter={'participant_ids.22201987': {'$exists': True}})
     for item in res:
         origin_event = item['origin_event']
         events = []
@@ -341,7 +341,7 @@ if __name__ == '__main__':
     # print(last_time_lst)
 
     # save as csv
-    with open('BadaBing1905_user_log.csv', 'w', encoding='utf-8') as f:
+    with open('22201987.csv', 'w', encoding='utf-8') as f:
         writer = csv.writer(f)
         writer.writerow(['AID', 'role: speaker', 'message', 'occur time'])
         for AID, block_lst in AI_dict.items():
