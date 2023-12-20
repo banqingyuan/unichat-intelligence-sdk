@@ -7,6 +7,8 @@ from common_py.client.azure_mongo import MongoDBClient
 from common_py.client.redis_client import RedisClient, RedisAIMemoryInfo
 from common_py.const.ai_attr import Entity_type_AI, Entity_type_user
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
+from pymongo.results import UpdateResult
+
 from memory_sdk.util import seconds_to_english_readable
 
 logger = wrapper_azure_log_handler(
@@ -187,8 +189,8 @@ class UserMemoryEntity:
             "target_id": self.target_id,
             "target_type": self.target_type,
         }
-        res = self.mongo_client.update_many_document("AI_memory_reflection", filter, {'$set': self.current_stash}, False)
-        logger.info(f"save stash result: {res}, content: {self.current_stash}")
+        res: UpdateResult = self.mongo_client.update_many_document("AI_memory_reflection", filter, {'$set': self.current_stash}, False)
+        logger.info(f"save stash result: {res.raw_result}, content: {self.current_stash}")
         self.current_stash = {}
 
     def on_destroy(self):
@@ -216,7 +218,7 @@ class UserMemoryEntity:
                 partition_key = f"{self.AID}-{self.target_id}"
                 user_entity['_partition_key'] = partition_key
                 res = self.mongo_client.update_many_document("AI_memory_reflection", filter, {'$set': user_entity}, True)
-                logger.info(f"create AI_memory_reflection {json.dumps(res)}, {json.dumps(filter)}")
+                logger.info(f"create AI_memory_reflection {res.raw_result}, {json.dumps(filter)}")
             self.current_stash = {}
         except Exception as e:
             logger.exception(e)
