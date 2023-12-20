@@ -259,6 +259,8 @@ class BluePrintInstance:
                 # function call 不能使用模板的function name，存在重复的可能性，需要使用蓝图中自定义的function name
                 function_call_description = node_instance.gen_function_call_describe()
                 function_call_description['name'] = child_node_name
+                if 'description' in self.nodes_dict[child_node_name] and self.nodes_dict[child_node_name]['description'] != '':
+                    function_call_description['description'] = self.nodes_dict[child_node_name]['description']
                 return function_call_description
 
             functions.append(replace_function_name_in_function_call_describe())
