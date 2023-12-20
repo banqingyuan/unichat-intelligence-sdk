@@ -108,8 +108,8 @@ class AIActionStrategy:
             if not instance:
                 logger.error(f"action instance not found: {action_id}")
                 return None
-            if 'preset_params' in config:
-                instance.set_params(**config['preset_params'])
+            if 'preset_args' in config:
+                instance.set_params(**config['preset_args'])
             return instance
         except Exception as e:
             logger.exception(e)

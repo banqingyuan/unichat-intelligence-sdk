@@ -333,6 +333,8 @@ class BluePrintInstance:
         else:
             raise Exception("Unknown node type")
         self.node_instance_dict[node_name] = node
+        if 'preset_args' in node_info and node_info['preset_args']:
+            node.set_params(**node_info['preset_args'])
         return node
 
 
