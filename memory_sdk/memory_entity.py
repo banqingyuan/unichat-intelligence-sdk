@@ -1,3 +1,4 @@
+import json
 import logging
 import time
 from typing import Optional
@@ -187,8 +188,8 @@ class UserMemoryEntity:
             "target_type": self.target_type,
         }
         res = self.mongo_client.update_many_document("AI_memory_reflection", filter, {'$set': self.current_stash}, False)
+        logger.info(f"save stash result: {res}, content: {self.current_stash}")
         self.current_stash = {}
-        logger.info(f"save stash result: {res}")
 
     def on_destroy(self):
         """
@@ -209,13 +210,13 @@ class UserMemoryEntity:
             }
             user_entity = self.redis_client.hgetall(RedisAIMemoryInfo.format(source_id=self.AID, target_id=self.target_id))
             # decode
-            user_entity = {k.decode(): v.decode() for k, v in user_entity.items()}
-            user_entity.update(filter)
-            if user_entity is not None:
+            if user_entity:
+                user_entity = {k.decode(): v.decode() for k, v in user_entity.items()}
+                user_entity.update(filter)
                 partition_key = f"{self.AID}-{self.target_id}"
                 user_entity['_partition_key'] = partition_key
                 res = self.mongo_client.update_many_document("AI_memory_reflection", filter, {'$set': user_entity}, True)
-                logger.info(f"create AI_memory_reflection {res.__str__()}")
+                logger.info(f"create AI_memory_reflection {json.dumps(res)}, {json.dumps(filter)}")
             self.current_stash = {}
         except Exception as e:
             logger.exception(e)
