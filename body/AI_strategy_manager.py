@@ -237,7 +237,7 @@ class AIStrategyManager:
 
     def receive_conversation_event(self,
                                    trigger_events: List[ConversationEvent],
-                                   current_event: BaseEvent) -> (bool, SystemHintEvent, Optional[BluePrintInstance]):
+                                   current_event: BaseEvent) -> (bool, Optional[BluePrintInstance]):
         # 此处应该根据候选trigger_ids, 找到对应的action入参，拼成function describe，然后调用LLM
         # LUI触发的依据是意图的吻合程度，因此没有优先级之分
         tasks = []
@@ -264,7 +264,7 @@ class AIStrategyManager:
             strategy = strategies[0]
             potential_strategy_lst.append(strategy)
         if len(potential_strategy_lst) == 0:
-            return True, None, None
+            return True, None
         describe_strategy_idx = {}
         func_describe_lst = []
         for strategy in potential_strategy_lst:
@@ -313,7 +313,7 @@ class AIStrategyManager:
             logger.info(f"Function call llm resp: {res.json()}")
             function_name = res.function_name
             if not function_name:
-                return True, None, None
+                return True, None
             args = res.arguments
             # if function_name == 'InformationSupplement':
             #     if len(args) > 0 and 'information_to_be_added' in args:
@@ -330,9 +330,9 @@ class AIStrategyManager:
             blue_print = self.activate_strategy(strategy_id, current_event, **args)
             # todo 判断策略是否过期和策略执行计数+unbind
             if blue_print is not None:
-                return False, None, blue_print
-            return False, None, None
-        return True, None, None
+                return False, blue_print
+            return False, None
+        return True, None
 
     def eval_lui_trigger(self, potential_triggers: List[str], target_text: str) -> Dict:
         try:
