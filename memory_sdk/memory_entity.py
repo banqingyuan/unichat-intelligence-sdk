@@ -74,7 +74,7 @@ class UserMemoryEntity:
         不要放写操作
         """
         result = self.redis_client.hgetall(self.redis_key)
-        if result is None:
+        if not result:
             logger.warning(f"AIInstanceInfo with id {self.AID} not found, try to load from mongo")
             result = self._load_from_mongo()
             if result is None:
