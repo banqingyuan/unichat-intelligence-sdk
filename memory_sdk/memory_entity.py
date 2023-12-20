@@ -83,6 +83,7 @@ class UserMemoryEntity:
                 logger.warning(f"AIInstanceInfo with id {self.AID} not found")
                 return
             # assure the result is a Dict[str, str]
+            del result['_id']
             self.redis_client.hset(self.redis_key, result)
 
         result = {k.decode(): v.decode() for k, v in result.items()}
