@@ -243,8 +243,8 @@ class BluePrintInstance:
     def _execute_llm_router(self, router: RouterNode, trigger_event: BaseEvent, shared_conditions: str = None) -> (str, Dict[str, str]):
         mission_purpose = self.description
         known_conditions = ''
-        for event in self.memory_mgr.get_event_list(BaseEvent, 6):
-            known_conditions += event.description() + '\n'
+        known_conditions += '\n'.join([self._event_description_wapper(event) for event in self.memory_mgr.get_event_list(BaseEvent, 6)])
+        known_conditions += '\n'
         if shared_conditions:
             known_conditions += shared_conditions + '\n'
         child_nodes = self._get_all_child_node_name(self.current_node_name)
@@ -336,6 +336,15 @@ class BluePrintInstance:
         if 'preset_args' in node_info and node_info['preset_args']:
             node.set_params(**node_info['preset_args'])
         return node
+
+    def _event_description_wapper(self, event: BaseEvent) -> str:
+        if isinstance(event, ConversationEvent):
+            if event.role == 'user':
+                return f"[USER:]{event.message}"
+            elif event.role == 'AI':
+                return f"[NPC:]{event.message}"
+        else:
+            return event.description()
 
 
 class BluePrintManager:
