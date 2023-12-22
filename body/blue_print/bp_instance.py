@@ -243,7 +243,7 @@ class BluePrintInstance:
     def _execute_llm_router(self, router: RouterNode, trigger_event: BaseEvent, shared_conditions: str = None) -> (str, Dict[str, str]):
         mission_purpose = self.description
         known_conditions = ''
-        known_conditions += '\n'.join([self._event_description_wapper(event) for event in self.memory_mgr.get_event_list(BaseEvent, 6)])
+        known_conditions += '\n'.join([self._event_description_wapper(event) for event in self.memory_mgr.get_event_list(ConversationEvent, 6)])
         known_conditions += '\n'
         if shared_conditions:
             known_conditions += shared_conditions + '\n'
