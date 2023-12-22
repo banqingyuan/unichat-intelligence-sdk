@@ -86,7 +86,6 @@ class TriggerMgr:
             logger.info("Start to refresh trigger")
             self._refresh_trigger_po()
             self._refresh_trigger()
-
         except Exception as e:
             logger.exception(e)
         threading.Timer(120, self.refresh).start()

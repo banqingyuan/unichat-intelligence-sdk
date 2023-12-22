@@ -204,6 +204,8 @@ class AIStrategyMgr:
             strategy = self.get_strategy_by_id(strategy_id, **kwargs)
             if strategy:
                 strategy_lst.append(strategy)
+            else:
+                logger.error(f"strategy not found: {strategy_id}")
         return strategy_lst
 
     def get_strategy_by_id(self, strategy_id: str, **kwargs) -> Optional[AIActionStrategy]:

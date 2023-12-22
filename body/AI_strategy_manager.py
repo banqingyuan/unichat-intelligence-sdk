@@ -110,7 +110,7 @@ class AIStrategyManager:
                 for strategy_id in strategy_id_list:
                     # 放map里去重
                     all_strategy_ids[strategy_id] = True
-
+        logger.debug(f"AI {self.AID} all strategy ids: {all_strategy_ids}, query filter: {query_filter}")
         all_strategy_id_lst = [strategy_id for strategy_id in all_strategy_ids.keys()]
         all_strategy_info = AIStrategyMgr().get_strategy_by_ids(
             all_strategy_id_lst,
