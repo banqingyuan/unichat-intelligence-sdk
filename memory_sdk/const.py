@@ -89,5 +89,14 @@ Please format the output as
 }
 Merge user and AI categories.'''
 
+gen_question_answer = """Please generate at most {question_number} targeted questions for the summaries of chats between users so that the summaries contain information that can answer the question.
+Questions should not include the names of specific people
+Here are the raw text of chats summary:
+{chat_summary}
+Please response in json format:
+{
+"questions": []
+}"""
+
 # if __name__ == '__main__':
 #     print(change_name_to_id.format(example_username='abc'))

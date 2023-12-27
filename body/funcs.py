@@ -2,7 +2,7 @@ import threading
 
 from common_py.client.azure_mongo import MongoDBClient
 
-from memory_sdk.event_block import EventBlock
+from memory_sdk.instance_memory_block.event_block import EventBlock
 
 
 class Funcs:

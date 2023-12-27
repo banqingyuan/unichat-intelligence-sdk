@@ -5,7 +5,8 @@ from typing import Dict, Optional
 
 from common_py.const.ai_attr import Entity_type_user
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
-from memory_sdk.event_block import BlockManager
+
+from memory_sdk.instance_memory_block.block_mgr import BlockManager
 from memory_sdk.memory_entity import UserMemoryEntity
 
 
