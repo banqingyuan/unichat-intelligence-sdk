@@ -117,7 +117,7 @@ class EnvRAGMgr:
                 if getter:
                     getter_dict[getter_name] = getter
 
-        system_prompt = "Here is additional information about the current scene:\n {env_addition_info}"
+        system_prompt = "### Scene Information \n Here is additional information about the current scene:\n {env_addition_info}"
         env_addition_info = '\n'.join(
             [getter(**{'channel_name': channel_name}) for getter in getter_dict.values()]
         )

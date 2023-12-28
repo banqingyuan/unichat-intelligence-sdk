@@ -69,8 +69,7 @@ class KnowledgeMgr:
 
     def query(self, input_message: str) -> str:
         results = self.knowledge_vector_collection.query(input_data=input_message, meta_filter={}, top_k=3, threshold=0.5)
-
-        info_tpl = "Provided are potential references about the App: \n {app_knowledge}\n Evaluate their relevancy. You may inform the user their query is unsupported or in development if the info is insufficient."
+        info_tpl = "### Additional Knowledge \n Provided are potential references about the App: \n {app_knowledge}\n Evaluate their relevancy. You may inform the user their query is unsupported or in development if the info is insufficient."
         knowledge_block = []
         for item in results:
             knowledge_block.append(item.documents.strip())

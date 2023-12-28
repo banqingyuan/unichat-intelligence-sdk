@@ -98,5 +98,55 @@ Please response in json format:
 "questions": []
 }"""
 
+get_target_timestamp = """### Task objective
+Extract formatted time information from text input
+
+### Output format
+{
+"formatted_time": "2023-12-26", # Year-Month-Day
+"time_accuracy": "day", # enum: ['day', 'month', 'week', 'year', 'undefined']
+}
+
+### Field Interpretation
+time_accuracy indicates the time range described by the user, e.g. when the user mentions last year, time_accuracy should be year, formatted_time should start with 2022, subsequent numbers are no longer important [but can't be omitted, must be kept intact]
+If the user mentions a day in the last year, then accuracy should be day, no longer year.
+If the user does not mention any time-related information, then formatted_time outputs the current time, and time_accuracy outputs 'undefined'.
+
+### Task example
+
+# Show Case 1.
+Current time: 2023-12-27
+Text input: Do you remember the wonderful Christmas we spend together last year?
+Expected output.
+{
+"formatted_time": "2022-12-25",
+"time_accuracy": "day"
+}
+
+# Show Case 2.
+Current time: 2023-06-27
+Text input: Do you remember the terrible car accident I talked about last year?
+Expected output.
+{
+"formatted_time": "2022-06-27",
+"time_accuracy": "year"
+}
+
+### Given conditions
+The current system time is: {current_time}
+The current user input is: {user_input}"""
+#
 # if __name__ == '__main__':
-#     print(change_name_to_id.format(example_username='abc'))
+#     from datetime import datetime
+#     import pytz
+#
+#     # 选择一个时区，例如 'Asia/Shanghai' 或 'America/New_York'
+#     time_zone = pytz.timezone('America/New_York')
+#
+#     # 获取当前时间，并设置为指定时区的时间
+#     current_time_in_timezone = datetime.now(time_zone)
+#
+#     # 格式化时间
+#     formatted_time = current_time_in_timezone.strftime("%Y-%m-%d %H:%M:%S %Z")
+#
+#     print(formatted_time)
