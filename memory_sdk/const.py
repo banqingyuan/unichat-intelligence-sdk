@@ -83,10 +83,10 @@ Only include categories that are explicitly mentioned or can be reasonably infer
 categories where no information is available or unknown. Provide detailed descriptions if needed to provide context.
 
 Please format the output as 
-{
+{{
 "emotion": "xxx",
 .....
-}
+}}
 Merge user and AI categories.'''
 
 gen_question_answer = """Please generate at most {question_number} targeted questions for the summaries of chats between users so that the summaries contain information that can answer the question.
@@ -94,18 +94,18 @@ Questions should not include the names of specific people
 Here are the raw text of chats summary:
 {chat_summary}
 Please response in json format:
-{
+{{
 "questions": []
-}"""
+}}"""
 
 get_target_timestamp = """### Task objective
 Extract formatted time information from text input
 
 ### Output format
-{
+{{
 "formatted_time": "2023-12-26", # Year-Month-Day
 "time_accuracy": "day", # enum: ['day', 'month', 'week', 'year', 'undefined']
-}
+}}
 
 ### Field Interpretation
 time_accuracy indicates the time range described by the user, e.g. when the user mentions last year, time_accuracy should be year, formatted_time should start with 2022, subsequent numbers are no longer important [but can't be omitted, must be kept intact]
@@ -118,19 +118,19 @@ If the user does not mention any time-related information, then formatted_time o
 Current time: 2023-12-27
 Text input: Do you remember the wonderful Christmas we spend together last year?
 Expected output.
-{
+{{
 "formatted_time": "2022-12-25",
 "time_accuracy": "day"
-}
+}}
 
 # Show Case 2.
 Current time: 2023-06-27
 Text input: Do you remember the terrible car accident I talked about last year?
 Expected output.
-{
+{{
 "formatted_time": "2022-06-27",
 "time_accuracy": "year"
-}
+}}
 
 ### Given conditions
 The current system time is: {current_time}

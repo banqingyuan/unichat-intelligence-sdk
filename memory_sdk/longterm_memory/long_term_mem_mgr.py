@@ -27,13 +27,16 @@ class LongTermMemoryMgr:
     def load_from_mongo(self, AID: str, target_id: str, entity: LongTermMemoryEntity):
         chroma_collection = ChromaDBManager().get_collection(gen_collection_name(AID, target_id))
         entity.set_collection(chroma_collection)
+        partition_id = f"participant_ids.{target_id}"
         mem_block_lst = self.mongo_client.find_from_collection("AI_memory_block",
                                                                filter={
-                                                                   "$and": {
-                                                                       "AID": AID,
-                                                                       f'participant_ids.{target_id}': {
-                                                                           '$exists': True},
-                                                                   }
+                                                                   "$and": [
+                                                                       {"AID": AID},
+                                                                       {partition_id: {
+                                                                           '$exists': True
+                                                                       }
+                                                                       },
+                                                                   ]
                                                                })
         logger.info(f"[LongTermMemoryEntity] load from mongo result number: {len(mem_block_lst)}")
         mem_blocks = [from_mongo_res_to_event_block(event_block) for event_block in mem_block_lst]
@@ -64,6 +67,7 @@ class LongTermMemoryMgr:
                     self.load_from_blob(store_key, entity)
                 else:
                     self.load_from_mongo(AID, target_id, entity)
+
             threading.Thread(target=load_vector_collection).start()
             return entity
         else:

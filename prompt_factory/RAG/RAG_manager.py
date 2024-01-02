@@ -1,3 +1,4 @@
+import datetime
 import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -35,11 +36,16 @@ class RAGMgr:
             topic_task_lst = []
             time_task_lst = []
             with ThreadPoolExecutor(max_workers=4) as executor:
-                def get_summary_by_block_name(_block_name: str):
+                def get_summary_by_block_name(_block_name: str) -> (str, str):
                     block = load_block_from_mongo(_block_name)
                     if not block:
                         return ''
-                    return block.get_summary()
+                    formatted_time = 'unknown'
+                    block_create_time = block.create_timestamp
+                    if block_create_time > 0:
+                        formatted_time = datetime.datetime.fromtimestamp(block_create_time).strftime('%Y-%m-%d')
+                    return block.get_summary(), formatted_time
+
                 for block_name in topic_relevant_block_lst:
                     topic_task_lst.append(executor.submit(get_summary_by_block_name, block_name))
                 for block_name in time_relevant_block_lst:
@@ -49,13 +55,22 @@ class RAGMgr:
             topic_summary = ''
             if len(topic_task_lst) > 0:
                 topic_summary = "### Historical conversation data related to the current topic \n "
-                summary_lst = [task.result() for task in topic_task_lst]
+                summary_lst = []
+                for summary_task in topic_task_lst:
+                    summary, formatted_time = summary_task.result()
+                    formatted_summary = f"Conversation happened in {formatted_time}: \n {summary}"
+                    summary_lst.append(formatted_summary)
                 topic_summary += '\n'.join(summary_lst)
+
 
             time_relevant_summary = ''
             if len(time_task_lst) > 0:
                 time_relevant_summary = "### Memories related to times mentioned in conversations \n "
-                summary_lst = [task.result() for task in time_task_lst]
+                summary_lst = []
+                for summary_task in topic_task_lst:
+                    summary, formatted_time = summary_task.result()
+                    formatted_summary = f"Conversation happened in {formatted_time}: \n {summary}"
+                    summary_lst.append(formatted_summary)
                 time_relevant_summary += '\n'.join(summary_lst)
 
             env_str = self.env_mgr.env_getter(input_message, channel_name)

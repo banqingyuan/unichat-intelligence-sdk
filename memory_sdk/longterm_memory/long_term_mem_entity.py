@@ -60,7 +60,7 @@ class LongTermMemoryEntity:
                 VectorRecordItem(
                     id=str(uuid.uuid4()),
                     meta=meta_data,
-                    document=mem_block.raw_summary
+                    documents=mem_block.raw_summary
                 )
             )
         self.collection.upsert_many(record_lst)
@@ -102,7 +102,7 @@ class LongTermMemoryEntity:
                     {"create_time": {"$lte": end_time}},
                 ]
             }, limit=count*4)
-            self._get_unique_block_name(query_res, count)
+            return self._get_unique_block_name(query_res, count)
         else:
             query_res = self.collection.query(input_data=content, meta_filter={
                 "$and": [
@@ -120,13 +120,7 @@ class LongTermMemoryEntity:
             time_range_tuple = self._generate_time_range(content)
             if not time_range_tuple:
                 return []
-            query_res = self.collection.query(input_data=content, meta_filter={
-                "$and": [
-                    {"create_time": {"$gte": time_range_tuple[0]}},
-                    {"create_time": {"$lte": time_range_tuple[1]}},
-                ]
-            }, top_k=count*4, threshold=0.7)
-            return self._get_unique_block_name(query_res, count)
+            return self._get_block_name_by_time_range(start_time=time_range_tuple[0], end_time=time_range_tuple[1], content=content, count=count)
         except Exception as e:
             logger.exception(e)
             return []
