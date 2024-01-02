@@ -109,7 +109,7 @@ class LongTermMemoryEntity:
                     {"create_time": {"$gte": start_time}},
                     {"create_time": {"$lte": end_time}},
                 ]
-            }, top_k=count*4, threshold=0.7)
+            }, top_k=count*4, threshold=0.5)
             return self._get_unique_block_name(query_res, count)
 
     def time_relevant_query(self, content: str, count: int = 3) -> List[str]:
@@ -181,7 +181,7 @@ class LongTermMemoryEntity:
                 logger.warning(f"LongTermMemoryEntity not ready, return empty list")
                 return []
             # 每个 summary 会生成四条query_index, count * 4是为了限制返回的最大数量。同时为了保证结果的多样性，不能让 top_k == count
-            query_res = self.collection.query(input_data=content, meta_filter={}, top_k=count*4, threshold=0.7)
+            query_res = self.collection.query(input_data=content, meta_filter={}, top_k=count*4, threshold=0.5)
             return self._get_unique_block_name(query_res, count)
         except Exception as e:
             logger.exception(e)
