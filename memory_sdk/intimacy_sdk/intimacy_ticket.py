@@ -22,3 +22,6 @@ class IntimacyTicketChatTime(IntimacyBase):
     UUID: str  # 对话事件一定存在UUID，可以根据UUID进行单据合并
     ts: int  # 时间戳表示事情发生的时刻
 
+    channel_name: str = None  # 产生ticket时AI的channel_name, 意义在于传递AI升级事件的channel_name
+
+

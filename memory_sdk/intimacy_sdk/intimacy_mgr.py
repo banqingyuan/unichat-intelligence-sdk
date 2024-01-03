@@ -5,6 +5,8 @@ from copy import deepcopy
 from typing import Dict, List
 from common_py.client.azure_mongo import MongoDBClient
 from common_py.client.redis_client import RedisClient
+from common_py.model.scene.const import SceneEventName_ConsumeObject
+from common_py.model.scene.event_report import report_scene_event
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
 from memory_sdk.hippocampus import HippocampusMgr
 from memory_sdk.intimacy_sdk.intimacy_ticket import IntimacyBase, IntimacyTicketChatTime
@@ -123,7 +125,6 @@ class IntimacyMgr:
         mem_entity.set_ideal_level(ideal_intimacy)
         self._check_and_update_intimacy(UID, AID, False)
 
-
     def _add_in_stash(self, intimacy_ticket: IntimacyBase):
         intimacy_key = _assemble_key(intimacy_ticket)
         if intimacy_key not in self.intimacy_stash:
@@ -191,6 +192,7 @@ class IntimacyMgr:
                                                               chat_time_length=time_length,
                                                               ts=ts,
                                                               speaker=speaker,
+                                                              channel_name=ticket_list[0].channel_name,
                                                               UUID=uuid)
                 self._add_in_stash(user_intimacy_ticket)
             if if_AI_in_chat:
@@ -211,6 +213,7 @@ class IntimacyMgr:
                                                             chat_time_length=time_length,
                                                             ts=ts,
                                                             speaker=speaker,
+                                                            channel_name=ticket_list[0].channel_name,
                                                             UUID=uuid)
                 self._add_in_stash(AI_intimacy_ticket)
         for uuid in combined_uuid_lst:
@@ -239,7 +242,8 @@ class IntimacyMgr:
 
             self._check_and_update_intimacy(source_id, target_id, False)
 
-            logger.debug(f'create AI_intimacy_record ids: {[str(id) for id in ids]} current intimacy point: {current_intimacy_point}')
+            logger.debug(
+                f'create AI_intimacy_record ids: {[str(id) for id in ids]} current intimacy point: {current_intimacy_point}')
 
     def _check_and_update_intimacy(self, source_id: str, target_id: str, need_upgrade: bool):
         mem_entity = HippocampusMgr().get_hippocampus(source_id).load_memory_of_user(target_id, need_upgrade)
@@ -280,7 +284,10 @@ class IntimacyMgr:
     def _upgrade_intimacy_level(self, request_level: str, mem_entity: UserMemoryEntity) -> bool:
         if request_level not in self.support_level:
             raise ValueError(f'unsupported intimacy level: {request_level}')
-
+        report_scene_event(SceneEventName_ConsumeObject,
+                           {
+                               'new_intimacy_level': request_level,
+                           }, channel_name, trigger_uid)
         intimacy_point = mem_entity.get_intimacy_point()
         level_request_point = self.intimacy_level2point[self.support_level[request_level]]
         if intimacy_point < level_request_point:
@@ -298,6 +305,7 @@ class IntimacyMgr:
 
 def _assemble_key(intimacy_ticket: IntimacyBase) -> str:
     return f'{intimacy_ticket.source_id} intimacy towards {intimacy_ticket.target_id}'
+
 
 if __name__ == '__main__':
     mp = {
