@@ -5,7 +5,7 @@ from copy import deepcopy
 from typing import Dict, List
 from common_py.client.azure_mongo import MongoDBClient
 from common_py.client.redis_client import RedisClient
-from common_py.model.scene.const import SceneEventName_ConsumeObject
+from common_py.model.scene.const import SceneEventName_ConsumeObject, SceneEventName_IntimacyLevelUp
 from common_py.model.scene.event_report import report_scene_event
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
 from memory_sdk.hippocampus import HippocampusMgr
@@ -240,16 +240,20 @@ class IntimacyMgr:
                 *['source_id', 'target_id']
             )
 
-            self._check_and_update_intimacy(source_id, target_id, False)
+            # trick 手段为了获取channel name，因为只有聊天时长的亲密度单据才会有channel name，现在也不存在其它类型的亲密度单据
+            # 所以这里实际运行时不会报错
+            channel_name = intimacy_ticket_list[0].channel_name  # type: ignore
+
+            self._check_and_update_intimacy(source_id, target_id, False, channel_name)
 
             logger.debug(
                 f'create AI_intimacy_record ids: {[str(id) for id in ids]} current intimacy point: {current_intimacy_point}')
 
-    def _check_and_update_intimacy(self, source_id: str, target_id: str, need_upgrade: bool):
+    def _check_and_update_intimacy(self, source_id: str, target_id: str, need_upgrade: bool, channel_name: str):
         mem_entity = HippocampusMgr().get_hippocampus(source_id).load_memory_of_user(target_id, need_upgrade)
         need_upgrade, new_intimacy_level = self._time_to_upgrade_intimacy(mem_entity)
         if need_upgrade:
-            self._upgrade_intimacy_level(new_intimacy_level, mem_entity)
+            self._upgrade_intimacy_level(new_intimacy_level, mem_entity, channel_name)
 
     def _time_to_upgrade_intimacy(self, mem_entity: UserMemoryEntity) -> (bool, False):
 
@@ -281,18 +285,19 @@ class IntimacyMgr:
 
         return False, ''
 
-    def _upgrade_intimacy_level(self, request_level: str, mem_entity: UserMemoryEntity) -> bool:
+    def _upgrade_intimacy_level(self, request_level: str, mem_entity: UserMemoryEntity, channel_name: str) -> bool:
         if request_level not in self.support_level:
             raise ValueError(f'unsupported intimacy level: {request_level}')
-        report_scene_event(SceneEventName_ConsumeObject,
-                           {
-                               'new_intimacy_level': request_level,
-                           }, channel_name, trigger_uid)
         intimacy_point = mem_entity.get_intimacy_point()
         level_request_point = self.intimacy_level2point[self.support_level[request_level]]
         if intimacy_point < level_request_point:
             return False
         mem_entity.set_intimacy_level(request_level)
+        threading.Thread(target=report_scene_event, args=(
+            SceneEventName_IntimacyLevelUp,
+            {'new_intimacy_level': request_level, },
+            channel_name, mem_entity.target_id)
+        ).start()
         logger.info(f'upgrade intimacy level to {request_level} for {mem_entity.AID} {mem_entity.target_id}')
 
     def __new__(cls, *args, **kwargs):
