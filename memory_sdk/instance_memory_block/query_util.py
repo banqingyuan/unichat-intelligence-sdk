@@ -22,9 +22,9 @@ class QueryOption(BaseModel):
     def set_time_range(self, start_time: str = None, end_time: str = None):
         # trans formatted time to timestamp
         if start_time:
-            self.start_time = int(datetime.strptime(start_time, '%Y-%m-%d').timestamp())
+            self.start_time = int(datetime.strptime(start_time, '%Y-%m-%d %H:%M:%S').timestamp())
         if end_time:
-            self.end_time = int(datetime.strptime(end_time, '%Y-%m-%d').timestamp())
+            self.end_time = int(datetime.strptime(end_time, '%Y-%m-%d %H:%M:%S').timestamp())
         return self
 
     def with_UIDs(self, *UIDs: str):
