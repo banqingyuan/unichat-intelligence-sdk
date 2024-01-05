@@ -5,7 +5,7 @@ from copy import deepcopy
 from typing import Dict, List
 from common_py.client.azure_mongo import MongoDBClient
 from common_py.client.redis_client import RedisClient
-from common_py.model.scene.const import SceneEventName_ConsumeObject, SceneEventName_IntimacyLevelUp
+from common_py.model.scene.const import SceneEventName_IntimacyLevelUp
 from common_py.model.scene.event_report import report_scene_event
 from common_py.utils.logger import wrapper_azure_log_handler, wrapper_std_output
 from memory_sdk.hippocampus import HippocampusMgr
