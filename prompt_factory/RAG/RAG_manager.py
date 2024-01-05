@@ -31,7 +31,8 @@ class RAGMgr:
             # 这里内部只有一个io操作，可以先串行
             entity = LongTermMemoryMgr().get_long_term_mem_entity(AID, UID)
             topic_relevant_block_lst = entity.get_block_name_by_text_input(input_message, count=2)
-            time_relevant_block_lst = entity.time_relevant_query(input_message, count=2)
+            # 全量过llm太慢了，优化之后再上，优化方案可以首先过一遍预设的vector db
+            # time_relevant_block_lst = entity.time_relevant_query(input_message, count=2)
 
             topic_task_lst = []
             time_task_lst = []
@@ -48,8 +49,8 @@ class RAGMgr:
 
                 for block_name in topic_relevant_block_lst:
                     topic_task_lst.append(executor.submit(get_summary_by_block_name, block_name))
-                for block_name in time_relevant_block_lst:
-                    time_task_lst.append(executor.submit(get_summary_by_block_name, block_name))
+                # for block_name in time_relevant_block_lst:
+                #     time_task_lst.append(executor.submit(get_summary_by_block_name, block_name))
 
             RAG_result = ''
             topic_summary = ''
