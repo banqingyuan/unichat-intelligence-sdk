@@ -85,8 +85,8 @@ class UserMemoryEntity:
             # assure the result is a Dict[str, str]
             del result['_id']
             self.redis_client.hset(self.redis_key, result)
-
-        result = {k.decode(): v.decode() for k, v in result.items()}
+        else:
+            result = {k.decode(): v.decode() for k, v in result.items()}
 
         self.met_times = int(result.get(AI_memory_met_times, 0))
         self.target_nickname = result.get(AI_memory_target_nickname, '')
