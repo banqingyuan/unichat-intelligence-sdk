@@ -123,7 +123,7 @@ class IntimacyMgr:
         if ideal_intimacy not in [BEST_FRIEND, ROMANTIC_PARTNER]:
             raise ValueError(f'unsupported ideal intimacy: {ideal_intimacy}')
         mem_entity.set_ideal_level(ideal_intimacy)
-        self._check_and_update_intimacy(UID, AID, True)
+        self._check_and_update_intimacy(AID, UID,  True, '')
 
     def _add_in_stash(self, intimacy_ticket: IntimacyBase):
         intimacy_key = _assemble_key(intimacy_ticket)
