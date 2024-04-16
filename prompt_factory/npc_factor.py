@@ -81,14 +81,18 @@ class NPCFactory:
         if not res:
             raise ValueError(f"No such AI personality: {AI_type_emma}")
         meta_data = res.get('meta_data', None)
-        gender = res.get('gender', None)
-        nickname = res.get('nickname', None)
+        set_gender = profile.get('gender', None)
+        gender = set_gender if set_gender else res.get('gender', None)
+        set_nickname = profile.get('nickname', None)
+        nickname = set_nickname if set_nickname else res.get('nickname', None)
         prompt_tpl = res.get('prompt_tpl', None)
         description = res.get('description', '')
         if not meta_data or not gender or not prompt_tpl:
             raise ValueError(f"Cannot find meta_data or gender or prompt_tpl of tpl {tpl_name}")
-        avatar_id = meta_data.get('avatar_id', None)
-        voice_id = meta_data.get('voice_id', None)
+        set_avatar_id = profile.get('avatar_id', None)
+        avatar_id = set_avatar_id if set_avatar_id else meta_data.get('avatar_id', None)
+        set_voice_id = profile.get('voice_id', None)
+        voice_id = set_voice_id if set_voice_id else meta_data.get('voice_id', None)
         typ = meta_data.get('role_type', None)
         version = meta_data.get('version', '1.0')
         if not typ or not avatar_id or not voice_id:
