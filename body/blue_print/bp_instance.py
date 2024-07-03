@@ -2,7 +2,7 @@ import logging
 import queue
 import threading
 from typing import Dict, Optional, List, Union, Any
-from common_py.ai_toolkit.openAI import ChatGPTClient, Message, OpenAIChatResponse, Model_gpt4
+from common_py.ai_toolkit.openAI import ChatGPTClient, Message, OpenAIChatResponse, Model_gpt4o
 from common_py.dto.ai_instance import AIBasicInformation, InstanceMgr
 from common_py.dto.user import UserBasicInformation, UserInfoMgr
 from common_py.model.base import BaseEvent
@@ -286,7 +286,7 @@ class BluePrintInstance:
             ],
             UUID=trigger_event.UUID,
             functions=functions,
-            model_source=Model_gpt4,
+            model_source=Model_gpt4o,
         )
         logger.info(f"_query_llm_and_get_function_call_resp llm response: {resp.json()}")
         if isinstance(resp, OpenAIChatResponse):
