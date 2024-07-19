@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from queue import Queue
 from typing import List, Dict, Optional
 
-from common_py.ai_toolkit.openAI import filter_brackets, ChatGPTClient, Message, Model_gpt4o, OpenAIChatResponse
+from common_py.ai_toolkit.openAI import filter_brackets, ChatGPTClient, Message, Model_gpt4o_mini, OpenAIChatResponse
 from common_py.client.azure_mongo import MongoDBClient
 from common_py.client.chroma import ChromaCollection, ChromaDBManager, VectorRecordItem
 from common_py.dto.ai_instance import AIBasicInformation
@@ -306,7 +306,7 @@ class AIStrategyManager:
             frequency_penalty=0,
             functions=func_describe_lst,
             UUID=current_event.UUID,
-            model_source=Model_gpt4o,
+            model_source=Model_gpt4o_mini,
             timeout=13,  # 经过统计数据，p99是11s
         )
         if isinstance(res, OpenAIChatResponse):
