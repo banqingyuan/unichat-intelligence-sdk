@@ -261,6 +261,7 @@ class IntimacyMgr:
             1: JUST_MET,
             2: CASUAL_FRIEND,
             3: SPECIAL_FRIEND,
+            4: ROMANTIC_PARTNER,
         }
 
         current_intimacy_point = mem_entity.get_intimacy_point()
@@ -271,6 +272,13 @@ class IntimacyMgr:
             if current_intimacy_point > point:
                 new_expected_level_int = level_int
                 break
+        
+        # all ai has romantic relationship.
+        new_expected_level_str = tmp_relation_mapping[new_expected_level_int]
+        if new_expected_level_str != current_level_str:
+            return True, new_expected_level_str
+        
+        ''' Deprecated. Now we upgrade relationship automatic.
         # todo 不是所有的AI都有浪漫关系亲密度选项
         if new_expected_level_int < 4:
             new_expected_level_str = tmp_relation_mapping[new_expected_level_int]
@@ -282,6 +290,7 @@ class IntimacyMgr:
                 return False, ''
             if ideal_level != current_level_str:
                 return True, ideal_level
+        '''
 
         return False, ''
 
