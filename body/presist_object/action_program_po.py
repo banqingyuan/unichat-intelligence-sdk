@@ -34,9 +34,11 @@ def load_all_action_program_po() -> Dict[str, ActionProgramPo]:
     :return:
     """
     mongo_client = MongoDBClient()
+    program_dict = {}
     programs = mongo_client.find_from_collection("AI_action_programs", filter={})
     if not programs:
-        raise Exception("No action program found")
+        logger.info("No action program in AI_action_programs collection.")
+        return program_dict
     program_dict = {}
     for program in programs:
         try:
