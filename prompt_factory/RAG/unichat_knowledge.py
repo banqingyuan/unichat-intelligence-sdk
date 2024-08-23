@@ -17,7 +17,7 @@ logger = wrapper_azure_log_handler(
     )
 )
 
-CollectionName_Knowledge = "unichat_knowledge_collection"
+CollectionName_Knowledge = "unichat_knowledge"
 
 
 class KnowledgeMgr:
