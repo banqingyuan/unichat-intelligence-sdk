@@ -85,10 +85,7 @@ class NPCFactory:
         gender = set_gender if set_gender else res.get('gender', None)
         set_nickname = profile.get('nickname', None)
         nickname = set_nickname if set_nickname else res.get('nickname', None)
-        prompt_tpl = res.get('prompt_tpl', None)
         description = res.get('description', '')
-        if not meta_data or not gender or not prompt_tpl:
-            raise ValueError(f"Cannot find meta_data or gender or prompt_tpl of tpl {tpl_name}")
         set_avatar_id = profile.get('avatar_id', None)
         avatar_id = set_avatar_id if set_avatar_id else meta_data.get('avatar_id', None)
         set_voice_id = profile.get('voice_id', None)
@@ -109,7 +106,7 @@ class NPCFactory:
             "type": typ,
             "input": json.dumps(input_params),
             "datasource": json.dumps(datasource),
-            "prompt_tpl": json.dumps(prompt_tpl),
+            # "prompt_tpl": json.dumps(prompt_tpl),
             "tpl_name": tpl_name,
             "version": version,
             "description": description
@@ -164,11 +161,13 @@ class NPCFactory:
             if not new_datasource:
                 raise ValueError(f"Can not find datasource in tpl: {tpl_name}")
             update_fields['datasource'] = json.dumps(new_datasource)
+        '''
         if 'prompt_tpl' in fields:
             new_prompt_tpl = tpl_res.get('prompt_tpl', None)
             if not new_prompt_tpl:
                 raise ValueError(f"Can not find prompt_tpl in tpl: {tpl_name}")
             update_fields['prompt_tpl'] = json.dumps(new_prompt_tpl)
+        '''
         if 'description' in fields:
             new_description = tpl_res.get('description', None)
             if not new_description:
