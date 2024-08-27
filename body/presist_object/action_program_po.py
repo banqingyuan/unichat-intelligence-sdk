@@ -36,7 +36,7 @@ def load_all_action_program_po() -> Dict[str, ActionProgramPo]:
     mongo_client = MongoDBClient()
     program_dict = {}
     programs = mongo_client.find_from_collection("AI_action_programs", filter={})
-    if not programs:
+    if not programs or len(programs) <= 0:
         logger.info("No action program in AI_action_programs collection.")
         return program_dict
     program_dict = {}
@@ -45,6 +45,6 @@ def load_all_action_program_po() -> Dict[str, ActionProgramPo]:
             program_po = ActionProgramPo(**program)
             program_dict[program_po.program_id] = program_po
         except Exception as e:
-            logger.exception(e)
+            logger.info(f"load all action program got exception {e}")
             continue
     return program_dict
